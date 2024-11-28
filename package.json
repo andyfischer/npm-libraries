@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "scripts": {
+      "lerna": "lerna"
+  },
+  "workspaces": [
+    "*"
+  ],
+  "devDependencies": {
+    "lerna": "8.1.8"
+  }
+}

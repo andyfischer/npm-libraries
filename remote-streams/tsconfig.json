@@ -1,0 +1,37 @@
+{
+  "include": [
+    "src/*ts"
+  ],
+  "compilerOptions": {
+    "lib": [
+      "es2021",
+      "dom"
+    ],
+    "target": "es2018",
+    "module": "commonjs",
+    "outDir": "dist",
+    "rootDir": "src",
+    "moduleResolution": "node",
+    "isolatedModules": false,
+    "jsx": "react",
+    "downlevelIteration": true,
+    "experimentalDecorators": true,
+    "forceConsistentCasingInFileNames": true,
+    "emitDecoratorMetadata": true,
+    "declaration": true,
+    "removeComments": true,
+    "sourceMap": true,
+    "noLib": false,
+    "skipLibCheck": true,
+    "preserveConstEnums": true,
+    "esModuleInterop": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "baseUrl": "src",
+    "paths": {
+    }
+  },
+  "exclude": [
+    "node_modules"
+  ]
+}

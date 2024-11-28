@@ -1,0 +1,27 @@
+{
+  "name": "@andyfischer/query",
+  "version": "0.0.8",
+  "license": "MIT",
+  "dependencies": {
+    "@andyfischer/streams": "^0.0.8"
+  },
+  "main": "dist/index.js",
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p .",
+    "tsc": "tsc",
+    "test": "vitest",
+    "prepare": "yarn build"
+  },
+  "files": [
+    "src",
+    "dist",
+    "README.md"
+  ],
+  "devDependencies": {
+    "@types/node": "^14.0.0",
+    "typescript": "^5.2.0",
+    "vitest": "^1.6.0"
+  },
+  "gitHead": "4fd4f4a0d31874c2994fe26679185d4a10a63453"
+}

@@ -1,0 +1,10 @@
+
+export { runCommandLineProcess } from './runCommandLineProcess'
+export { parseCommandLineArgs } from './parseCommandLineArgs'
+export { spawn } from './shell'
+export { exposeFunc, query, getGraph } from './globalState'
+export { SqliteDatabase } from './sql/SqliteDatabase'
+export { FileWatcher } from './fs/loadAndWatchFiles'
+export { streamToCsv } from './csv/streamToCsv'
+export { streamToCsvFile } from './fs/csv'
+export { recursiveWalkRelative as recursiveWalk } from './fs/RecursiveWalk'

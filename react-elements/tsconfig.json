@@ -1,0 +1,38 @@
+{
+  "include": [
+    "src/index.d.ts",
+    "src/**/*ts"
+  ],
+  "compilerOptions": {
+    "lib": [
+      "es2021",
+      "dom"
+    ],
+    "target": "es2018",
+    "module": "nodenext",
+    "outDir": "dist",
+    "rootDir": "src",
+    "moduleResolution": "nodenext",
+    "isolatedModules": false,
+    "jsx": "react",
+    "downlevelIteration": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "declaration": true,
+    "removeComments": true,
+    "sourceMap": true,
+    "noLib": false,
+    "skipLibCheck": true,
+    "preserveConstEnums": true,
+    "esModuleInterop": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "baseUrl": ".",
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+    }
+  },
+  "exclude": [
+    "node_modules"
+  ]
+}

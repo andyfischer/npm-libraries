@@ -1,0 +1,31 @@
+{
+  "name": "@andyfischer/node-tool",
+  "version": "0.0.8",
+  "license": "MIT",
+  "description": "Helper framework for a Node.js based tool",
+  "main": "dist/index.js",
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p .",
+    "tsc": "tsc",
+    "test": "vitest",
+    "prepare": "yarn build"
+  },
+  "files": [
+    "src",
+    "dist",
+    "README.md"
+  ],
+  "devDependencies": {
+    "@types/node": "^14.0.0",
+    "typescript": "^5.2.0",
+    "vitest": "1.6.0"
+  },
+  "dependencies": {
+    "@andyfischer/query": "^0.0.8",
+    "@andyfischer/streams": "^0.0.8",
+    "better-sqlite3": "11.2.1",
+    "source-map-support": "0.5.21"
+  },
+  "gitHead": "4fd4f4a0d31874c2994fe26679185d4a10a63453"
+}
