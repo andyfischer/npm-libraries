@@ -1,8 +1,9 @@
 
 import { c_done, c_fail, captureError, exceptionIsBackpressureStop, recordUnhandledError, Stream } from '@andyfischer/streams'
-import { splitJson } from './utils/splitJson';
+import { JsonSplitDecoder } from './utils/splitJson';
 import { ConnectionTransport, TransportEventType, TransportMessage, TransportRequest } from './TransportTypes';
 import { IDSource } from '@andyfischer/streams'
+import { readStreamingFetchResponse } from './utils/readStreamingFetchResponse';
 
 const VerboseLogHttpClient = false;
 
@@ -19,58 +20,7 @@ interface SetupOptions {
     fetchImpl(url: string, fetchOptions: { method: 'POST', headers: any, body: string}): any
 }
 
-class JsonMessageDecoder {
-    leftover: string = null;
 
-    *receive(str: string) {
-        if (this.leftover) {
-            str = this.leftover + str;
-            this.leftover = null;
-        }
-
-        for (const result of splitJson(str)) {
-            if (result.t === 'item') {
-                yield JSON.parse(result.str);
-            }
-
-            if (result.t === 'unfinished') {
-                this.leftover = result.remaining;
-                return;
-            }
-        }
-    }
-}
-
-async function readFetchResponseAsChunks(fetchResponse, onChunk: (text) => void, onDone: () => void) {
-    if (fetchResponse.body.getReader) {
-        // Browser standard support for streaming fetch.
-        const reader = fetchResponse.body.getReader();
-        const decoder = new TextDecoder();
-
-        while (true) {
-          const { value, done } = await reader.read();
-
-          let hasSentDone = false;
-          if (done) {
-            if (!hasSentDone) {
-                hasSentDone = true;
-                onDone();
-            }
-            return;
-          }
-
-          const text = decoder.decode(value);
-          onChunk(text);
-        }
-    } else {
-        // Node.js alternative for streaming fetch.
-        for await (const chunk of fetchResponse.body) {
-            onChunk(chunk.toString());
-        }
-
-        onDone();
-    }
-}
 
 export class HttpClient<RequestType, ResponseType> implements ConnectionTransport<RequestType, ResponseType> {
     name = "HttpClient"
@@ -130,8 +80,8 @@ export class HttpClient<RequestType, ResponseType> implements ConnectionTranspor
     }
 
     _sendHttpRequest(outgoingMessages: TransportRequest<RequestType>[]) {
-        const jsonMessageDecoder = new JsonMessageDecoder();
-        const streamIdsInThisBatch = new Set(outgoingMessages.map(m => m.streamId));
+        const jsonSplitDecoder = new JsonSplitDecoder();
+        const openStreamsInThisRequest = new Set(outgoingMessages.map(m => m.streamId));
         const httpRequestId = this.httpRequestId.take();
 
         let body: any;
@@ -154,10 +104,7 @@ export class HttpClient<RequestType, ResponseType> implements ConnectionTranspor
             let fetchResponse;
 
             try {
-                // console.log('sending fetch request', { fetch: this.setupOptions.fetchImpl, fullUrl, method, body });
-
                 fetchResponse = await this.setupOptions.fetchImpl(
-                //fetchResponse = await window.fetch(
                     fullUrl, {
                     method,
                     headers: {
@@ -165,8 +112,6 @@ export class HttpClient<RequestType, ResponseType> implements ConnectionTranspor
                     },
                     body,
                 });
-
-                // console.log('response from fetch request', fetchResponse);
 
             } catch (e) {
                 // Protocol error when trying to call fetch(). Kill all requests with an error.
@@ -180,8 +125,7 @@ export class HttpClient<RequestType, ResponseType> implements ConnectionTranspor
 
                 try {
                     this.incomingEvents.item({ t: TransportEventType.connection_lost, cause: error });
-                } catch (e) {
-                }
+                } catch (e) { }
 
                 return;
             }
@@ -215,23 +159,25 @@ export class HttpClient<RequestType, ResponseType> implements ConnectionTranspor
                 return;
             }
 
-            const onChunk = (str: string) => {
+            // Read the response body as a stream of JSON messages.
+            for await (const chunk of readStreamingFetchResponse(fetchResponse)) {
                 if (VerboseLogHttpClient)
-                    console.log(`HttpClient (req #${httpRequestId}) onChunk`, str)
+                    console.log(`HttpClient (req #${httpRequestId}) onChunk`, chunk)
 
-                if (!str)
-                    return;
-
+                if (!chunk)
+                    continue;
+                    
                 try {
-                    for (let message of jsonMessageDecoder.receive(str)) {
+                    for (let message of jsonSplitDecoder.receive(chunk)) {
                         message = message as TransportMessage<ResponseType>;
                         if (VerboseLogHttpClient)
                             console.log(`HttpClient (req #${httpRequestId}) received message:`, message);
 
                         switch (message.t) {
+                            // Check if this closes any open streams in streamIdsInThisBatch.
                             case TransportEventType.response_event:
                                 if (message.evt.t === c_fail || message.evt.t === c_done) {
-                                    streamIdsInThisBatch.delete(message.streamId);
+                                    openStreamsInThisRequest.delete(message.streamId);
                                 }
                                 break;
                         }
@@ -242,46 +188,42 @@ export class HttpClient<RequestType, ResponseType> implements ConnectionTranspor
                             if (exceptionIsBackpressureStop(e)) {
                                 console.log(`HttpClient (req #${httpRequestId}) is backpressure stopped`);
                                 // This connection is closed, throw away the remaining incoming messages;
-                                return;
+                            } else {
+                                recordUnhandledError(e);
                             }
-
-                            recordUnhandledError(e);
                         }
 
                     }
                 } catch (err) {
-                    console.error('HttpClient: uncaught error while parsing received data', { err, str });
+                    console.error('HttpClient: uncaught error while parsing received data', { err, chunk });
                 }
             }
 
-            const onResponseStreamDone = () => {
-                if (VerboseLogHttpClient)
-                    console.log(`HttpClient (req #${httpRequestId})  onResponseStreamDone`)
+            if (VerboseLogHttpClient)
+                console.log(`HttpClient (req #${httpRequestId})  onResponseStreamDone`)
 
-                // Finished handling all the incoming data from the HTTP response.
+            // Finished handling all the incoming data from the HTTP response.
 
-                // If the remote side had any open streams, close them now.
-                if (streamIdsInThisBatch.size > 0) {
-                    if (VerboseLogHttpClient) {
-                        console.log(`HttpClient (req #${httpRequestId}): Finished reading response body, closing unfinished streams:`, streamIdsInThisBatch);
-                    }
-                    for (const streamId of streamIdsInThisBatch.keys()) {
-                        try {
-                            this.incomingEvents.item({
-                                t: TransportEventType.response_event,
-                                streamId,
-                                evt: { t: c_fail, error: {
-                                    errorMessage: 'HTTP request did not finish stream',
-                                    errorType: 'http_request_didnt_finish_stream'
-                                }}
-                            });
-                        } catch (e) {
-                        }
+            // If the remote side had any leftover open streams, close them now.
+            if (openStreamsInThisRequest.size > 0) {
+                if (VerboseLogHttpClient) {
+                    console.log(`HttpClient (req #${httpRequestId}): Finished reading response body, closing unfinished streams:`, openStreamsInThisRequest);
+                }
+                for (const streamId of openStreamsInThisRequest.keys()) {
+                    try {
+                        this.incomingEvents.item({
+                            t: TransportEventType.response_event,
+                            streamId,
+                            evt: { t: c_fail, error: {
+                                errorMessage: 'HTTP request did not finish stream',
+                                errorType: 'http_request_didnt_finish_stream'
+                            }}
+                        });
+                    } catch (e) {
                     }
                 }
             }
 
-            await readFetchResponseAsChunks(fetchResponse, onChunk, onResponseStreamDone);
         })();
     }
 

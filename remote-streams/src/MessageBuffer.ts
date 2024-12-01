@@ -1,5 +1,5 @@
 
-import { Stream, ErrorDetails, captureError } from '@andyfischer/streams'
+import { Stream, ErrorDetails } from '@andyfischer/streams'
 
 const DefaultTimeoutMs = 5000;
 

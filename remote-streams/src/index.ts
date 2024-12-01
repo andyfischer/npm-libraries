@@ -1,5 +1,4 @@
 
-export { ActiveStreamSet } from './ActiveStreamSet'
 export { Connection } from './Connection'
 export { Connection as DurableConnection } from './Connection'
 export { HttpClient } from './HttpClient'

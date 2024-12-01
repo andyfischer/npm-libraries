@@ -1,8 +1,7 @@
 
-import { ActiveStreamSet } from './ActiveStreamSet'
 import { Table, compileSchema } from '@andyfischer/query'
 import { RequestClient } from './RequestClient'
-import { Stream, c_done, c_fail, c_item, BackpressureStop } from '@andyfischer/streams'
+import { Stream, c_done, c_fail, c_item, BackpressureStop, StreamProtocolValidator, recordUnhandledError, ErrorDetails, StreamEvent } from '@andyfischer/streams'
 import { MessageBuffer } from './MessageBuffer'
 import { TransportEventType } from './TransportTypes'
 import type { ConnectionTransport, TransportMessage, TransportRequest } from './TransportTypes'
@@ -80,6 +79,8 @@ const connectionAttemptsSchema = compileSchema({
     ]
 });
 
+type StreamId = number | string;
+
 export class Connection<RequestType = any, IncomingRequestType = any> implements RequestClient<RequestType> {
     name: string
 
@@ -99,7 +100,11 @@ export class Connection<RequestType = any, IncomingRequestType = any> implements
 
     transport: ConnectionTransport<RequestType, IncomingRequestType>;
     transportIncomingEvents: Stream;
-    activeStreams = new ActiveStreamSet();
+    
+    streams = new Map<StreamId, Stream>();
+    validators = new Map<StreamId, StreamProtocolValidator>();
+    closedStreamIds = new Set<StreamId>()
+
     nextRequestStreamId = 1
     outgoingBuffer: MessageBuffer
 
@@ -142,7 +147,7 @@ export class Connection<RequestType = any, IncomingRequestType = any> implements
 
     close() {
         this.clearCurrentTransport();
-        this.activeStreams.closeAll();
+        this.closeAllActiveStreams();
         this.setStatus('permanent_close');
         if (this.options.onClose) {
             this.options.onClose(this);
@@ -165,7 +170,7 @@ export class Connection<RequestType = any, IncomingRequestType = any> implements
         case 'permanent_close':
         case 'failure_temporary_back_off':
             this.clearCurrentTransport();
-            this.activeStreams.closeAll();
+            this.closeAllActiveStreams();
             this.clearReconnectTimer();
 
             // console.log('closing outgoingBuffer: ', this.outgoingBuffer);
@@ -228,7 +233,7 @@ export class Connection<RequestType = any, IncomingRequestType = any> implements
             msg.streamId = this.takeNextRequestId();
         }
 
-        this.activeStreams.addStream('req_' + msg.streamId, output);
+        this.addRequestStream('req_' + msg.streamId, output);
 
         this.transport.send(msg);
     }
@@ -325,12 +330,12 @@ export class Connection<RequestType = any, IncomingRequestType = any> implements
                     console.log(`${this.name}: connection has disconnected (shouldRetry=${shouldRetry})`); 
 
                 if (shouldRetry === false) {
-                    this.activeStreams.failAll(evt.cause || { errorMessage: "connection_lost", errorType: 'connection_lost' });
+                    this.failAllActiveStreams(evt.cause || { errorMessage: "connection_lost", errorType: 'connection_lost' });
                     this.close();
                 } else {
                     this.setStatus('waiting_for_ready');
                     this.clearCurrentTransport();
-                    this.activeStreams.closeAll();
+                    this.closeAllActiveStreams();
                     this.scheduleReconnectionTimer(10);
                 }
                 break;
@@ -344,7 +349,7 @@ export class Connection<RequestType = any, IncomingRequestType = any> implements
                 let stream: Stream;
 
                 if (streamId) {
-                    stream = this.activeStreams.startStream('res_' + streamId);
+                    stream = this.addIncomingStream('res_' + streamId);
 
                     stream.pipe(evt => {
                         if (this.status !== 'ready')
@@ -355,7 +360,7 @@ export class Connection<RequestType = any, IncomingRequestType = any> implements
                         switch (evt.t) {
                             case c_done:
                             case c_fail:
-                                this.activeStreams.closeStream('res_' + streamId);
+                                this.closeStream('res_' + streamId);
                         }
                     });
                 } else {
@@ -381,8 +386,8 @@ export class Connection<RequestType = any, IncomingRequestType = any> implements
                 // Remote side is providing a response to one of our requests.
                 const streamId = 'req_' + evt.streamId;
 
-                if (this.activeStreams.isStreamOpen(streamId)) {
-                    this.activeStreams.receiveMessage(streamId, evt.evt);
+                if (this.isStreamOpen(streamId)) {
+                    this.receiveMessage(streamId, evt.evt);
 
                 } else {
                     // Stream isn't active (it may have been closed on our side). Tell the remote
@@ -497,5 +502,147 @@ export class Connection<RequestType = any, IncomingRequestType = any> implements
             console.log(`${this.name}: scheduled next reattempt for ${timeToAttempt}ms`, { recentCount, mostRecentAttempt });
 
         this.scheduleReconnectionTimer(timeToAttempt);
+    }
+
+    /*
+      addIncomingStream
+
+      Start a Stream object that was initiated by the remote side.
+    */
+    addIncomingStream(id: StreamId) {
+        if (this.streams.has(id))
+            throw new Error("ActiveStreamSet protocol error: already have stream with id: " + id);
+
+        if (VerboseLog)
+            console.log('ActiveStreamSet - startStream with id: ' + JSON.stringify(id));
+
+        let stream = new Stream();
+
+        this.streams.set(id, stream);
+        this.validators.set(id, new StreamProtocolValidator(`stream validator for socket id=${id}`));
+        return stream;
+    }
+
+    /*
+      addRequestStream
+
+      Start a Stream object that was initiated by this client, as part of a call to .sendRequest.
+    */
+    addRequestStream(id: StreamId, stream: Stream) {
+        if (!stream) {
+            throw new Error("ActiveStreamSet usage error: missing stream");
+        }
+
+        if (this.streams.has(id))
+            throw new Error("ActiveStreamSet protocol error: already have stream with id: " + id);
+        
+        if (VerboseLog)
+            console.log('ActiveStreamSet - addStream with id: ' + id);
+
+        this.streams.set(id, stream);
+        this.validators.set(id, new StreamProtocolValidator(`stream validator for socket id=${id}`));
+        return stream;
+    }
+
+    isStreamOpen(id: StreamId) {
+        return this.streams.has(id);
+    }
+
+    garbageCollect() {
+        for (const [ id, stream ] of this.streams.entries()) {
+            if (stream.isClosed()) {
+                this.streams.delete(id);
+                this.validators.delete(id);
+                this.closedStreamIds.add(id);
+            }
+        }
+    }
+
+    getOpenCount() {
+        return this.streams.size;
+    }
+
+    receiveMessage(id: StreamId, msg: StreamEvent) {
+        if (VerboseLog)
+            console.log('ActiveStreamSet - receiveMessage on stream id: ' + id, msg);
+
+        const stream = this.streams.get(id);
+
+        if (!stream) {
+            if (this.closedStreamIds.has(id))
+                return;
+
+            console.error("ActiveStreamSet protocol error: no stream with id: " + id, msg);
+            throw new Error("ActiveStreamSet protocol error: no stream with id: " + id);
+        }
+
+        this.validators.get(id).check(msg);
+
+        switch (msg.t) {
+        case c_done:
+        case c_fail:
+            if (VerboseLog)
+                console.log('ActiveStreamSet - close event on stream id: ' + id);
+            this.streams.delete(id);
+            this.validators.delete(id);
+            this.closedStreamIds.add(id);
+        }
+
+        try {
+            stream.event(msg);
+        } catch (e) {
+            if (e.backpressure_stop || e.is_backpressure_stop) {
+                if (VerboseLog)
+                    console.log('ActiveStreamSet - backpressure closed stream id: ' + id);
+                this.streams.delete(id);
+                this.validators.delete(id);
+                this.closedStreamIds.add(id);
+                return;
+            }
+
+            recordUnhandledError(e);
+        }
+    }
+
+    closeStream(id: StreamId) {
+        const stream = this.streams.get(id);
+
+        if (!stream)
+            return;
+
+        this.streams.delete(id);
+        this.validators.delete(id);
+        this.closedStreamIds.add(id);
+
+        stream.stopReceiving();
+    }
+
+    failAllActiveStreams(error: ErrorDetails) {
+        for (const [ id, stream ] of this.streams.entries()) {
+            stream.fail(error);
+            this.closedStreamIds.add(id);
+        }
+
+        this.streams.clear();
+        this.validators.clear();
+    }
+
+    closeAllActiveStreams() {
+        for (const stream of this.streams.values()) {
+            try {
+                stream.stopReceiving();
+            } catch (e) {
+                if (e.backpressure_stop || e._is_backpressure_stop)
+                    continue;
+
+                recordUnhandledError(e);
+            }
+        }
+
+        for (const id of this.streams.keys())
+            this.closedStreamIds.add(id);
+
+        this.streams.clear();
+        this.validators.clear();
     }
 }

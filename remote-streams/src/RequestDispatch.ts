@@ -1,5 +1,6 @@
 
-import { ErrorWithDetails, Stream, c_done, c_fail, callbackToStream, logWarn, LogEvent, c_item, c_related, c_log, c_log_error } from '@andyfischer/streams'
+import { ErrorWithDetails, Stream, c_done, c_fail, callbackToStream, logWarn,
+    LogEvent, c_item, c_related, c_log, c_log_error } from '@andyfischer/streams'
 import { Table, lazySchema } from '@andyfischer/query'
 
 interface SetupOptions {

@@ -1,5 +1,18 @@
 
-export function* splitJson(str: string) {
+/*
+ splitJson
+
+ Reads and parses a string that contains concatenated JSON values.
+
+ Outputs an iterator with each JSON value seperated.
+*/
+
+interface OutputItem {
+    jsonStr?: string;
+    leftover?: string;
+}
+
+export function* splitJson(str: string): IterableIterator<OutputItem> {
     if (!str)
         return;
 
@@ -45,7 +58,7 @@ export function* splitJson(str: string) {
             depth--;
 
             if (depth === 0) {
-                yield { t: 'item', str: str.slice(itemStart, lookahead + 1) }
+                yield { jsonStr: str.slice(itemStart, lookahead + 1) }
                 betweenItems = true;
             }
 
@@ -54,7 +67,37 @@ export function* splitJson(str: string) {
     }
 
     if (!betweenItems) {
-        yield { t: 'unfinished', remaining: str.slice(itemStart) }
+        yield { leftover: str.slice(itemStart) }
     }
 }
 
+
+/*
+ JsonSplitDecoder
+
+ Receives a string that has concatenated JSON messages and yields complete parsed objects
+ when they are ready.
+
+ Maintains a .leftover state field for messages that are incomplete.
+*/
+export class JsonSplitDecoder {
+    leftover: string = null;
+
+    *receive(str: string) {
+        if (this.leftover) {
+            str = this.leftover + str;
+            this.leftover = null;
+        }
+
+        for (const result of splitJson(str)) {
+            if (result.jsonStr) {
+                yield JSON.parse(result.jsonStr);
+            }
+
+            if (result.leftover) {
+                this.leftover = result.leftover;
+                return;
+            }
+        }
+    }
+}

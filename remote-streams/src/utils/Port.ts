@@ -1,5 +1,4 @@
 
-
 import { assertDataIsSerializable } from './validateSerializable';
 
 export class LocalEventSource<T = any> implements EventSource<T> {
@@ -92,6 +91,6 @@ export function createLocalPortPair() {
     clientToServer = new LocalPort(() => serverToClient);
     serverToClient = new LocalPort(() => clientToServer);
 
-    return [ clientToServer, serverToClient ]
+    return [ clientToServer, serverToClient ];
 }
 

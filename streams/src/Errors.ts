@@ -4,12 +4,23 @@ import { c_item, c_log, c_log_error, StreamErrorLogMessage } from './EventType'
 import { randomAlpha } from './randomHex'
 
 export interface ErrorDetails {
+    // Unique ID assigend to this error when it's captured.
     errorId?: string
+    
+    // Short enum-like string to categorize the error.
     errorType?: string
+
+    // Readable error message. For `Error` instances, this is the `message` property.
     errorMessage: string
+
+    // Stack trace. For `Error` instances, this is the `stack` property.
     stack?: any
+
+    // Previous error that caused this one.
     cause?: ErrorDetails
-    related?: any[]
+
+    // Arbitrary related information about the error, depending on the context.
+    related?: Array< Record<string, string> >
 }
 
 function newErrorId() {
@@ -46,12 +57,11 @@ function errorItemToString(item: ErrorDetails) {
     return out;
 }
 
-
 export function toException(item: ErrorDetails): ErrorWithDetails {
     return new ErrorWithDetails(item);
 }
 
-export function captureError(error: Error | ErrorDetails | string, related?: any[]): ErrorDetails {
+export function captureError(error: Error | ErrorDetails | string, related?: Record<string,any>[]): ErrorDetails {
     
     if (!error) {
         return {
@@ -128,7 +138,6 @@ function getGlobalErrorListeners() {
 
 export function recordUnhandledError(error: Error | ErrorDetails) {
     const errorDetails = captureError(error);
-    console.error('Unhandled error:', errorDetails, new Error())
     getGlobalErrorListeners().event({ t: c_item, item: errorDetails });
 }
 
