@@ -328,7 +328,7 @@ export class Connection<RequestType = any, IncomingRequestType = any> implements
 
             case TransportEventType.connection_lost: {
 
-                const shouldRetry = evt.shouldRetry || (evt.shouldRetry == undefined);
+                const shouldRetry: boolean = evt.shouldRetry || (evt.shouldRetry == undefined);
 
                 if (this.logs)
                     this.logs.logError({ errorMessage: "connection lost", cause: evt.cause });
@@ -336,7 +336,7 @@ export class Connection<RequestType = any, IncomingRequestType = any> implements
                 if (VerboseLog)
                     console.log(`${this.name}: connection has disconnected (shouldRetry=${shouldRetry})`); 
 
-                if (shouldRetry === false) {
+                if (!shouldRetry) {
                     this.failAllActiveStreams(evt.cause || { errorMessage: "connection_lost", errorType: 'connection_lost' });
                     this.close();
                 } else {
@@ -636,14 +636,7 @@ export class Connection<RequestType = any, IncomingRequestType = any> implements
 
     closeAllActiveStreams() {
         for (const stream of this.streams.values()) {
-            try {
-                stream.stopListening();
-            } catch (e) {
-                if (e.backpressure_stop || e._is_backpressure_stop)
-                    continue;
-
-                recordUnhandledError(e);
-            }
+            stream.stopListening();
         }
 
         for (const id of this.streams.keys())

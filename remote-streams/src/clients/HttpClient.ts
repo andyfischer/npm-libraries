@@ -5,7 +5,7 @@ import { ConnectionTransport, TransportEventType, TransportMessage, TransportReq
 import { IDSource } from '@andyfischer/streams'
 import { readStreamingFetchResponse } from '../utils/readStreamingFetchResponse';
 
-const VerboseLogHttpClient = true;
+const VerboseLogHttpClient = false;
 
 export interface PostBody<RequestType> {
     messages: TransportRequest<RequestType>[]
@@ -126,6 +126,7 @@ export class HttpClient<RequestType, ResponseType> implements ConnectionTranspor
                 });
 
             } catch (e) {
+
                 // Protocol error when trying to call fetch(). Kill all requests with an error.
                 const error = {
                     ...captureError(e),
@@ -136,7 +137,7 @@ export class HttpClient<RequestType, ResponseType> implements ConnectionTranspor
                     console.log(`HttpClient (req #${httpRequestId})  got a fetch exception, closing with error`, { e });
 
                 try {
-                    this.incomingEvents.item({ t: TransportEventType.connection_lost, cause: error });
+                    this.incomingEvents.item({ t: TransportEventType.connection_lost, cause: error, shouldRetry: false });
                 } catch (e) { }
 
                 return;
