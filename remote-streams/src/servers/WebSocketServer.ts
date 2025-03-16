@@ -2,7 +2,7 @@
 import WebSocket from 'ws'
 import { Stream, captureError, IDSource, LogEvent } from '@andyfischer/streams'
 import { Table, lazySchema } from '@andyfischer/query'
-import { WebSocketClient } from '../WebSocketClient'
+import { WebSocketClient } from '../clients/WebSocketClient'
 import { Connection } from '../Connection'
 import type { RequestDispatch } from '../RequestDispatch'
 

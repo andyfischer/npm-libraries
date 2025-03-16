@@ -37,7 +37,9 @@ export class SqliteDatabase {
             params = paramsToArray(params);
             return statement.get.apply(statement, params);
         } catch (e) {
-            this.error(captureError(e));
+            const error = captureError(e, [{ sql }]);
+            e.errorMessage = `Error trying to get() with SQL: ${e.message}`;
+            this.error(captureError(error));
             throw e;
         }
     }
@@ -49,7 +51,9 @@ export class SqliteDatabase {
             params = paramsToArray(params);
             return statement.all.apply(statement, params);
         } catch (e) {
-            this.error(captureError(e));
+            const error = captureError(e, [{ sql }]);
+            e.errorMessage = `Error trying to list() with SQL: ${e.message}`;
+            this.error(captureError(error));
             throw e;
         }
     }
@@ -74,7 +78,9 @@ export class SqliteDatabase {
             params = paramsToArray(params);
             return statement.run.apply(statement, params);
         } catch (e) {
-            this.error(captureError(e));
+            const error = captureError(e, [{ sql }]);
+            e.errorMessage = `Error trying to run() SQL: ${e.message}`;
+            this.error(captureError(error));
             throw e;
         }
     }

@@ -1,6 +1,6 @@
 {
   "name": "@andyfischer/remote-streams",
-  "version": "0.0.8",
+  "version": "0.1.0",
   "license": "MIT",
   "description": "Send and receive streams (using @andyfischer/streams) across remote connections",
   "sideEffects": false,
@@ -18,7 +18,7 @@
   ],
   "dependencies": {
     "@andyfischer/query": "^0.0.8",
-    "@andyfischer/streams": "^0.0.8",
+    "@andyfischer/streams": "^0.1.0",
     "ws": "8.18.0"
   },
   "devDependencies": {

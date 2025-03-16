@@ -1,6 +1,8 @@
 
 import { Stream, } from './Stream'
-import { StreamEvent, c_done, c_item, c_fail, c_schema } from './EventType'
+import { StreamEvent, c_done, c_item, c_fail, c_schema, c_restart, c_delta, c_log_info, c_log_warn, c_log_error } from './EventType'
+
+const KnownEventTypes = new Set([c_done, c_item, c_fail, c_schema, c_restart, c_delta, c_log_info, c_log_warn, c_log_error]);
 
 export class StreamProtocolValidator {
     description: string
@@ -15,6 +17,11 @@ export class StreamProtocolValidator {
     }
 
     check(msg: StreamEvent) {
+        if (!KnownEventTypes.has(msg.t)) {
+            const error = `Stream validation failed for (${this.description}), unknown event type: ${JSON.stringify(msg)}`;
+            console.error(error);
+            throw new Error(error);
+        }
 
         // After the stream is closed, no more messages are allowed.
         // After 'done', only certain messages are allowed (close, start_updates, fail)

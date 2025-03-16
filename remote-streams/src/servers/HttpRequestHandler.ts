@@ -3,13 +3,13 @@ import type { IncomingMessage as HttpRequest, ServerResponse as HttpResponse } f
 import { Stream, c_done, c_fail, recordUnhandledError, IDSource, captureError } from '@andyfischer/streams'
 import { Connection, RequestDispatch } from '..'
 import { TransportEventType, TransportMessage, TransportRequest } from '../TransportTypes';
-import { PostBody } from '../HttpClient';
+import { PostBody } from '../clients/HttpClient';
 import { callbackBasedIterator } from '@andyfischer/streams';
 
 const VerboseLogHttpServer = false;
 
 interface SetupOptions<RequestType, ResponseType> {
-    api: RequestDispatch<RequestType>
+    handleRequest?: (req: RequestType, connection: Connection<RequestType, any>, output: Stream) => void
 }
 
 async function* parseDataChunks(data) {
@@ -33,11 +33,11 @@ async function readFullBuffer(data) {
 }
 
 export class HttpRequestHandler<RequestType = any, ResponseType = any> {
-    api: RequestDispatch<RequestType>
+    handleRequest?: (req: RequestType, connection: Connection<RequestType, any>, output: Stream) => void 
     nextRequestId = new IDSource();
 
-    constructor({ api }: SetupOptions<RequestType, ResponseType>) {
-        this.api = api;
+    constructor({ handleRequest }: SetupOptions<RequestType, ResponseType>) {
+        this.handleRequest = handleRequest;
     }
 
     async handleHttpRequest(httpReq: HttpRequest, httpRes: HttpResponse) {
@@ -166,7 +166,7 @@ export class HttpRequestHandler<RequestType = any, ResponseType = any> {
         connection = new Connection<ResponseType, RequestType>({
             enableReconnection: false,
             connect: () => transport,
-            api: this.api,
+            handleRequest: this.handleRequest,
         });
     }
 }

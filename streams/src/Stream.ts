@@ -5,7 +5,7 @@ import { StreamSuperTrace, StreamSuperDuperTrace } from './Config'
 import type { SchemaDecl } from './SchemaDecl'
 import { callbackBasedIterator } from './callbackBasedIterator'
 import { BackpressureStop, exceptionIsBackpressureStop } from './BackpressureStop'
-import { EventType, StreamEvent, c_item, c_done, c_fail, c_log, c_related, c_schema, c_restart, c_delta, c_log_info, c_log_warn, c_log_error } from './EventType'
+import { StreamEvent, c_item, c_done, c_fail, c_schema, c_restart, c_log_info, c_log_warn, c_log_error } from './EventType'
 import { eventTypeToString, formatStreamEvent } from './formatStreamEvent'
 
 const TraceCloseEvents = false;
@@ -56,7 +56,7 @@ export class Stream<ItemType = any> implements EventReceiver {
             this.receiver.event(event);
         } catch (e) {
             if (exceptionIsBackpressureStop(e)) {
-                this.stopReceiving();
+                this.stopListening();
                 return;
             }
 
@@ -117,20 +117,20 @@ export class Stream<ItemType = any> implements EventReceiver {
         this.event({ t: c_fail, error });
     }
 
-    related(item: any) { this.event({ t: c_related, item }); }
     restart() { this.event({ t: c_restart }); }
+
     schema(schema: SchemaDecl) { this.event({ t: c_schema, schema }); }
 
-    info(message: string, details?: any) {
-        this.event({ t: c_log, message, level: c_log_info, details });
+    info(message: string, details?: Record<string, any>) {
+        this.event({ t: c_log_info, message, details });
     }
 
-    warn(message: string, details?: any) {
-        this.event({ t: c_log, message, level: c_log_warn, details });
+    warn(message: string, details?: Record<string, any>) {
+        this.event({ t: c_log_warn, message, details });
     }
 
     logError(error: ErrorDetails) {
-        this.event({ t: c_log, level: c_log_error, error });
+        this.event({ t: c_log_error, error });
     }
 
     closeWithError(error: ErrorDetails) {
@@ -291,7 +291,7 @@ export class Stream<ItemType = any> implements EventReceiver {
                 switch (msg.t) {
                 case c_item:
                     resolve(msg.item);
-                    this.stopReceiving();
+                    this.stopListening();
                     break;
                 case c_fail:
                     reject(toException(msg.error));
@@ -512,6 +512,28 @@ export class Stream<ItemType = any> implements EventReceiver {
         return output;
     }
 
+    onItem(callback: (ItemType) => void): void {
+        this.pipe({
+            event: (evt: StreamEvent) => {
+                switch (evt.t) {
+                    case c_item:
+                        try {
+                            callback(evt.item);
+                        } catch (e) {
+                            if (exceptionIsBackpressureStop(e))
+                                throw e;
+                            console.error(`${this.getDebugLabel()}: unhandled exception in Stream.onItem: `, e);
+                        }
+                        break;
+                    case c_done:
+                        break;
+                    case c_fail:
+                        break;
+                }
+            }
+        });
+    }
+
     forEach(callback: (ItemType) => void): Promise<void> {
         return new Promise((resolve, reject) => {
             this.pipe({
@@ -521,7 +543,7 @@ export class Stream<ItemType = any> implements EventReceiver {
                             try {
                                 callback(evt.item);
                             } catch (e) {
-                                console.error(`${this.getDebugLabel()}: unhandled exception in Stream.watchItems: `, e);
+                                console.error(`${this.getDebugLabel()}: unhandled exception in Stream.forEach: `, e);
                             }
                             break;
                         case c_done:
@@ -537,7 +559,7 @@ export class Stream<ItemType = any> implements EventReceiver {
     }
 
     /*
-        stopReceiving
+        stopListening
 
         This function should only be called by the 'downstream' handler (the code
         that is receiving & processing stream events).
@@ -546,7 +568,7 @@ export class Stream<ItemType = any> implements EventReceiver {
 
         If the upstream continues to send events, they'll trigger a BackpressureStop exception.
     */
-    stopReceiving() {
+    stopListening() {
         this.closedByDownstream = true;
         this.receiver = null;
         this.backlog = null;

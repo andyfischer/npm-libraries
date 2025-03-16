@@ -1,13 +1,13 @@
 
 export { StreamEvent, StreamItem, StreamDone,
     c_done, c_item, c_fail, c_schema,
-    c_log, c_log_error, c_log_info, c_log_warn, c_related,
+    c_log_error, c_log_info, c_log_warn,
     c_delta, c_restart } from './EventType';
 export { Stream, EventReceiver } from './Stream';
 export { formatStreamEvent, eventTypeToString } from './formatStreamEvent';
 export { BackpressureStop, exceptionIsBackpressureStop } from './BackpressureStop'
 export { IDSource } from './IDSource';    
-export { StreamListeners } from './StreamListeners';
+export { StreamDispatcher } from './StreamDispatcher';
 export { randomHex, randomAlpha } from './randomHex';
 export { ErrorDetails, ErrorWithDetails, captureError, errorAsStreamEvent,
     startGlobalErrorListener, recordUnhandledError } from './Errors';

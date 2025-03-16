@@ -1,11 +1,11 @@
 
-import { Port } from './utils/Port'
+import { Port } from '../utils/Port'
 import { Stream } from '@andyfischer/streams'
-import { TransportMessage, ConnectionTransport, TransportEventType } from './TransportTypes'
+import { TransportMessage, ConnectionTransport, TransportEventType } from '../TransportTypes'
 
 const VerboseLog = false;
 
-export class MessagePortTransport<RequestType, ResponseType> implements ConnectionTransport<RequestType, ResponseType>{
+export class MessagePortClient<RequestType, ResponseType> implements ConnectionTransport<RequestType, ResponseType>{
     port: Port
     incomingEvents: Stream<TransportMessage<RequestType>> = new Stream()
     onClose?: () => void

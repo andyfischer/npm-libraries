@@ -19,20 +19,21 @@ what the connection's transport is.
  * HttpServer - Server that handles HTTP requests.
  * WebSocketServer - Server that handles WebSocket connections.
 
-# Architecture #
+# Overview #
 
-The code consists of these layers:
+Each remote connection has two layers:
 
  * *Connection* layer
    - Implemented by the `Connection` class.
+   - Same class used for all types of protocols.
    - Handles multiplexing of request & response streams across the transport.
    - Handles the connection state (connected / closed / etc)
    - Handles creating the Transport as needed.
    - Handles queueing of incoming messages if we're waiting to establish the connection.
 
  * *Transport* layer
-   - Lower level, handles the details of sending the message across some remote protocol.
    - Seperate implementations for different protocols: HTTP, WebSocket, etc.
+   - Lower level, handles the details of sending the message across some remote protocol.
    - Responsible for transporting messages to & from the Connection.
 
 # How to write a new Transport #

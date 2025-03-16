@@ -1,6 +1,6 @@
 
-import { StreamListeners } from './StreamListeners'
-import { c_item, c_log, c_log_error, StreamErrorLogMessage } from './EventType'
+import { StreamDispatcher } from './StreamDispatcher'
+import { c_item, c_log_error, StreamLogError, } from './EventType'
 import { randomAlpha } from './randomHex'
 
 export interface ErrorDetails {
@@ -27,7 +27,7 @@ function newErrorId() {
     return randomAlpha(10);
 }
 
-let _globalErrorListeners: StreamListeners;
+let _globalErrorListeners: StreamDispatcher;
 
 export class ErrorWithDetails extends Error {
     is_error_extended = true
@@ -124,13 +124,13 @@ export function captureError(error: Error | ErrorDetails | string, related?: Rec
     };
 }
 
-export function errorAsStreamEvent(error: ErrorDetails): StreamErrorLogMessage {
-    return { t: c_log, level: c_log_error, error: error };
+export function errorAsStreamEvent(error: ErrorDetails): StreamLogError {
+    return { t: c_log_error, error: error };
 }
 
 function getGlobalErrorListeners() {
     if (!_globalErrorListeners) {
-        _globalErrorListeners = new StreamListeners();
+        _globalErrorListeners = new StreamDispatcher();
     }
 
     return _globalErrorListeners;
@@ -142,6 +142,6 @@ export function recordUnhandledError(error: Error | ErrorDetails) {
 }
 
 export function startGlobalErrorListener() {
-    return getGlobalErrorListeners().add();
+    return getGlobalErrorListeners().newListener();
 }
 

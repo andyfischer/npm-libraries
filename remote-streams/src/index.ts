@@ -1,15 +1,18 @@
 
 export { Connection } from './Connection'
 export { Connection as DurableConnection } from './Connection'
-export { HttpClient } from './HttpClient'
 export { getResponseSchema } from './ResponseSchemas'
-export { WebSocketClient } from './WebSocketClient'
 export { RequestDispatch } from './RequestDispatch'
-export { MessagePortTransport } from './MessagePortTransport'
-export { MessagePortTransport as MessagePort } from './MessagePortTransport'
 export { MessageBuffer } from './MessageBuffer'
-export { setupServerInfo } from './server/setupServerInfo'
-export { startHttpServer } from './server/HttpSocketServer'
+export { setupServerInfo } from './servers/setupServerInfo'
 export { setupGenericResponseTable } from './GenericResponse'
-
 export type { RequestClient } from './RequestClient'
+
+// Servers
+export { startHttpServer } from './servers/HttpSocketServer'
+
+// Clients
+export { HttpClient } from './clients/HttpClient'
+export { setupHttpClient } from './clients/setupHttpClient'
+export { WebSocketClient } from './clients/WebSocketClient'
+export { MessagePortClient } from './clients/MessagePortClient'

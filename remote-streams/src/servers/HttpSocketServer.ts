@@ -6,7 +6,8 @@ import { WebSocketServer, ServerOptions as WebSocketServerOptions } from "./WebS
 import { HttpRequestHandler } from "./HttpRequestHandler";
 
 interface ServerSettings {
-    api?: RequestDispatch<any>
+    handleRequest?: (req: any, connection: any, output: any) => void
+    requestPath?: string
     webServer?: { handle: (req, res) => void }
     enableWebSocket?: boolean
     webSocketSettings?: WebSocketServerOptions<any>
@@ -24,26 +25,31 @@ export async function startHttpServer(settings: ServerSettings): Promise<ActiveH
 
     const log = createNestedLoggerStream('HttpServer');
     let webSocketServer: WebSocketServer<any> | null = null;
+    const requestPath = settings.requestPath || '/api';
 
-    if (settings.enableWebSocket && settings.api) {
+    if (!requestPath.startsWith('/')) {
+        throw new Error('requestPath must start with a /');
+    }
+
+    if (settings.enableWebSocket) {
         const wsServer = new WebSocket.Server({
             server: httpServer
         });
 
         webSocketServer = new WebSocketServer({
             wsServer,
-            api: settings.api,
+            handleRequest: settings.handleRequest,
             logStream: log,
 
             ...settings.webSocketSettings,
         });
     }
 
-    let apiHandler: HttpRequestHandler | null = null;
+    let requestHandler: HttpRequestHandler | null = null;
 
-    if (settings.api) {
-        apiHandler = new HttpRequestHandler({
-            api: settings.api,
+    if (settings.handleRequest) {
+        requestHandler = new HttpRequestHandler({
+            handleRequest: settings.handleRequest,
         });
     }
 
@@ -56,9 +62,9 @@ export async function startHttpServer(settings: ServerSettings): Promise<ActiveH
             return;
         }
 
-        if (apiHandler && path === '/api') {
+        if (requestHandler && path === requestPath) {
             res.setHeader('Access-Control-Allow-Origin', '*');
-            apiHandler.handleHttpRequest(req, res);
+            requestHandler.handleHttpRequest(req, res);
             return;
         }
 

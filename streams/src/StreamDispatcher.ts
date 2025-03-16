@@ -1,7 +1,7 @@
 
 import { EventReceiver, Stream } from './Stream'
 import { StreamEvent,
-        c_done, c_fail, c_item, c_log, c_log_error, c_log_info, c_log_warn,
+        c_done, c_fail, c_item, c_log_error, c_log_info, c_log_warn,
         c_restart, } from './EventType'
 import { ErrorDetails, recordUnhandledError } from './Errors'
 import { BackpressureStop, exceptionIsBackpressureStop } from './BackpressureStop'
@@ -11,21 +11,27 @@ import { BackpressureStop, exceptionIsBackpressureStop } from './BackpressureSto
 
   Stores a list of streams that all listen to the same events.
 */
-export class StreamListeners<ItemType = any, MetadataType = any>
+export class StreamDispatcher<ItemType = any, MetadataType = any>
     implements EventReceiver<ItemType>
 {
     listeners: Array<[ Stream<ItemType>, MetadataType ]> = []
     recordUnhandledExceptions = true
     closed = false
 
-    add(metadata?: MetadataType) {
+    newListener({metadata}: {metadata?: MetadataType} = {}) {
         const stream = new Stream<ItemType>();
         this.listeners.push([stream,metadata]);
         return stream;
     }
     
-    addStream(stream: Stream, metadata?: MetadataType) {
+    addListener(stream: Stream, metadata?: MetadataType) {
         this.listeners.push([stream,metadata]);
+        return stream;
+    }
+
+    onItem(callback: (item: ItemType) => void) {
+        const stream = this.newListener();
+        stream.onItem(callback);
         return stream;
     }
 
@@ -33,16 +39,16 @@ export class StreamListeners<ItemType = any, MetadataType = any>
         this.event({t: c_item, item});
     }
 
-    info(message: string, details?: any) {
-        this.event({ t: c_log, message, level: c_log_info, details });
+    info(message: string, details?: Record<string, any>) {
+        this.event({ t: c_log_info, message, details });
     }
 
-    warn(message: string, details?: any) {
-        this.event({ t: c_log, message, level: c_log_warn, details });
+    warn(message: string, details?: Record<string, any>) {
+        this.event({ t: c_log_warn, message, details });
     }
 
     logError(error: ErrorDetails) {
-        this.event({ t: c_log, level: c_log_error, error });
+        this.event({ t: c_log_error, error });
     }
 
     restart() {

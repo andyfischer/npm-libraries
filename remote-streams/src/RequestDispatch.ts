@@ -1,6 +1,8 @@
 
 import { ErrorWithDetails, Stream, c_done, c_fail, callbackToStream, logWarn,
-    LogEvent, c_item, c_related, c_log, c_log_error } from '@andyfischer/streams'
+    LogEvent, c_item, c_log_error, 
+    c_log_info,
+    c_log_warn} from '@andyfischer/streams'
 import { Table, lazySchema } from '@andyfischer/query'
 
 interface SetupOptions {
@@ -112,18 +114,15 @@ export class RequestDispatch<RequestType> {
         wrapped.pipe(evt => {
             switch (evt.t) {
             case c_item:
-            case c_related:
                 if (this.setupOptions.fixOutgoingResponseData) {
                     evt.item = this.setupOptions.fixOutgoingResponseData(evt.item);
                 }
                 break;
-            case c_log:
-
+            case c_log_info:
+            case c_log_warn:
                 if (this.setupOptions.fixOutgoingResponseData) {
-                if (evt.level !== c_log_error) {
-                  evt.details = this.setupOptions.fixOutgoingResponseData(evt.details);
+                    evt.details = this.setupOptions.fixOutgoingResponseData(evt.details);
                 }
-            }
                 break
 
             case c_fail:
@@ -141,7 +140,7 @@ export class RequestDispatch<RequestType> {
         return wrapped;
     }
 
-    handleRequest(req: RequestType, connection, output: Stream) {
+    handleRequest(req: RequestType, connection: any, output: Stream) {
 
         if (this.setupOptions.fixIncomingRequestData) {
             req = this.setupOptions.fixIncomingRequestData(req);

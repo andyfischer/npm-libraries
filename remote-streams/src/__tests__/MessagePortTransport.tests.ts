@@ -2,21 +2,21 @@
 import { it, expect } from 'vitest'
 import { Connection, } from '../Connection'
 import { Stream, c_fail } from '@andyfischer/streams'
-import { createLocalPortPair } from '../../utils/Port'
-import { MessagePortTransport } from '../MessagePortTransport'
+import { createLocalPortPair } from '../utils/Port'
+import { MessagePortClient } from '../clients/MessagePortClient'
 
 it("passes the local message port test", () => {
     const [ clientPort, serverPort ] = createLocalPortPair();
 
     const clientConnection = new Connection({
         connect() {
-            return new MessagePortTransport(clientPort)
+            return new MessagePortClient(clientPort)
         }
     });
 
     const serverConnection = new Connection({
         connect() {
-            return new MessagePortTransport(serverPort)
+            return new MessagePortClient(serverPort)
         },
         handleRequest(req, connection, output) {
             output.item({ responseTo: req });
@@ -62,14 +62,14 @@ it("provides the sender information", () => {
 
     const clientConnection = new Connection({
         connect() {
-            return new MessagePortTransport(clientPort)
+            return new MessagePortClient(clientPort)
         }
     });
 
     const serverConnection = new Connection({
         name: 'ServerConnection',
         connect() {
-            return new MessagePortTransport(wrappedPort)
+            return new MessagePortClient(wrappedPort)
         },
         handleRequest(req, connection, output) {
             log.push(`handle request (sender=${connection.sender}): ${JSON.stringify(req)}`);

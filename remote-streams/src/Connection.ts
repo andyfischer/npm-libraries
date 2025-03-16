@@ -1,7 +1,8 @@
 
 import { Table, compileSchema } from '@andyfischer/query'
 import { RequestClient } from './RequestClient'
-import { Stream, c_done, c_fail, c_item, BackpressureStop, StreamProtocolValidator, recordUnhandledError, ErrorDetails, StreamEvent } from '@andyfischer/streams'
+import { Stream, c_done, c_fail, c_item, BackpressureStop, StreamProtocolValidator,
+    recordUnhandledError, ErrorDetails, StreamEvent } from '@andyfischer/streams'
 import { MessageBuffer } from './MessageBuffer'
 import { TransportEventType } from './TransportTypes'
 import type { ConnectionTransport, TransportMessage, TransportRequest } from './TransportTypes'
@@ -45,7 +46,10 @@ interface SetupOptions<OutgoingRequestType,IncomingRequestType> {
     // the transport is lost.
     enableReconnection?: boolean
 
+    // Optional - RequestHandler instance. If provided, this will be used for the 'handleRequest' callback.
     api?: RequestHandler<IncomingRequestType>
+
+    // Callback to handle incoming requests.
     handleRequest?: HandleRequestFunc<IncomingRequestType>
 
     // Optional callback triggered when the connection is established (or reestablished).
@@ -90,7 +94,7 @@ export class Connection<RequestType = any, IncomingRequestType = any> implements
     authentication?: any
 
     options: SetupOptions<RequestType, IncomingRequestType>
-    api: RequestHandler<IncomingRequestType>
+    handleRequest: HandleRequestFunc<IncomingRequestType>
 
     status: ConnectionStatus;
 
@@ -116,13 +120,16 @@ export class Connection<RequestType = any, IncomingRequestType = any> implements
         this.options = options;
         this.logs = options.logs;
         this.recentAttempts = connectionAttemptsSchema.createTable();
-        this.api = options.api;
         this.outgoingBuffer = new MessageBuffer({ timeoutMs: options.bufferedMessageTimeout });
 
-        if (!this.api && options.handleRequest) {
-            this.api = {
-                handleRequest: options.handleRequest
-            }
+        this.handleRequest = options.handleRequest;
+
+        if (options.api && options.handleRequest) {
+            throw new Error("Connection: cannot provide both 'api' and 'handleRequest' options");
+        }
+
+        if (options.api) {
+            this.handleRequest = options.api.handleRequest.bind(options.api);
         }
 
         this.reconnectSchedule = {
@@ -368,14 +375,14 @@ export class Connection<RequestType = any, IncomingRequestType = any> implements
                     stream = Stream.newNullStream();
                 }
 
-                if (!this.api) {
+                if (!this.handleRequest) {
                     stream.closeWithError({ errorType: 'no_handler', errorMessage: "Connection is not set up to handle requests" });
                     return;
                 }
 
                 switch (evt.t) {
                 case TransportEventType.request:
-                    this.api.handleRequest(evt.req, this, stream);
+                    this.handleRequest(evt.req, this, stream);
                     break;
                 }
 
@@ -433,7 +440,7 @@ export class Connection<RequestType = any, IncomingRequestType = any> implements
         this.transport = null;
 
         if (this.transportIncomingEvents) {
-            this.transportIncomingEvents.stopReceiving();
+            this.transportIncomingEvents.stopListening();
             this.transportIncomingEvents = null;
         }
     }
@@ -614,7 +621,7 @@ export class Connection<RequestType = any, IncomingRequestType = any> implements
         this.validators.delete(id);
         this.closedStreamIds.add(id);
 
-        stream.stopReceiving();
+        stream.stopListening();
     }
 
     failAllActiveStreams(error: ErrorDetails) {
@@ -630,7 +637,7 @@ export class Connection<RequestType = any, IncomingRequestType = any> implements
     closeAllActiveStreams() {
         for (const stream of this.streams.values()) {
             try {
-                stream.stopReceiving();
+                stream.stopListening();
             } catch (e) {
                 if (e.backpressure_stop || e._is_backpressure_stop)
                     continue;

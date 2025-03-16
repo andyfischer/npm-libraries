@@ -1,6 +1,6 @@
 
 
-import { c_item, c_fail, c_log, c_log_info, c_log_warn, c_log_error } from './EventType'
+import { c_item, c_fail, c_log_info, c_log_warn, c_log_error } from './EventType'
 import { Stream, } from './Stream'
 import { captureError, ErrorDetails } from './Errors'
 import { colorize, } from './console/AnsiColors'
@@ -119,6 +119,31 @@ export function logEvent(event: LogEvent) {
     }
 }
 
+function errorToLogEvent(error: Error | ErrorDetails | string, details?: any): LogEvent {
+    const errorItem: ErrorDetails = captureError(error);
+
+    const logEvent: LogEvent = {
+        ...errorItem,
+        message: null,
+        level: c_log_error,
+        details,
+    }
+
+    if (logEvent.error?.errorMessage) {
+        logEvent.message = logEvent.error?.errorMessage;
+    }
+
+    if (!logEvent.message) {
+        logEvent.message = errorItem.errorType;
+    }
+
+    if (!logEvent.message) {
+        logEvent.message = "(no .errorMessage or .errorType)"
+    }
+
+    return logEvent;
+}
+
 export function logInfo(message: string, context?: LogEvent) {
     logEvent({ ...context, level: c_log_info, message });
 }
@@ -128,28 +153,8 @@ export function logWarn(message: string, context?: LogEvent) {
 }
 
 export function logError(error: Error | ErrorDetails | string, details?: any) {
-    const errorItem: ErrorDetails = captureError(error);
-
-    const asLogEvent: LogEvent = {
-        ...errorItem,
-        message: null,
-        level: c_log_error,
-        details,
-    }
-
-    if (asLogEvent.error?.errorMessage) {
-        asLogEvent.message = asLogEvent.error?.errorMessage;
-    }
-
-    if (!asLogEvent.message) {
-        asLogEvent.message = errorItem.errorType;
-    }
-
-    if (!asLogEvent.message) {
-        asLogEvent.message = "(no .errorMessage or .errorType)"
-    }
-
-    logEvent(asLogEvent);
+    const event = errorToLogEvent(error, details);
+    logEvent(event);
 }
 
 export function createNestedLoggerStream(topic: string) {
@@ -158,21 +163,44 @@ export function createNestedLoggerStream(topic: string) {
     stream.pipe(evt => {
         switch (evt.t) {
             case c_item: {
-                const event: LogEvent = { ...evt.item, topic };
-                logEvent(event);
+                logEvent({
+                    ...evt.item,
+                    topic,
+                });
                 break;
             }
 
             case c_fail: {
-                const event: LogEvent = { level: c_log_error, ...evt.error, topic }
-                logError(evt.error);
+                logEvent({
+                    ...errorToLogEvent(evt.error),
+                    topic,
+                });
                 break;
             }
 
-            case c_log: {
-                logEvent(evt);
+            case c_log_info:
+                logEvent({
+                    ...evt,
+                    level: c_log_info,
+                    topic,
+                });
                 break;
-            }
+
+            case c_log_warn:
+                logEvent({
+                    ...evt,
+                    level: c_log_warn,
+                    topic,
+                });
+                break;
+
+            case c_log_error:
+                logEvent({
+                    ...evt,
+                    level: c_log_error,
+                    topic,
+                });
+                break;
 
             default: {
                 console.warn('unrecognized event type sent to createNestedLoggerStream', evt);

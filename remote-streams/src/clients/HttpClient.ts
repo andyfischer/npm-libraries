@@ -1,26 +1,28 @@
 
 import { c_done, c_fail, captureError, exceptionIsBackpressureStop, recordUnhandledError, Stream } from '@andyfischer/streams'
-import { JsonSplitDecoder } from './utils/splitJson';
-import { ConnectionTransport, TransportEventType, TransportMessage, TransportRequest } from './TransportTypes';
+import { JsonSplitDecoder } from '../utils/splitJson';
+import { ConnectionTransport, TransportEventType, TransportMessage, TransportRequest } from '../TransportTypes';
 import { IDSource } from '@andyfischer/streams'
-import { readStreamingFetchResponse } from './utils/readStreamingFetchResponse';
+import { readStreamingFetchResponse } from '../utils/readStreamingFetchResponse';
 
-const VerboseLogHttpClient = false;
+const VerboseLogHttpClient = true;
 
 export interface PostBody<RequestType> {
     messages: TransportRequest<RequestType>[]
 }
+
+export type FetchImpl = (url: string, fetchOptions: { method: 'POST', headers: any, body: string }) => any;
 
 interface SetupOptions {
     url: string
 
     requestStyle?: 'post-batch' | 'get-cacheable';
 
-    // Implementation of fetch() function. Usually provided by window.fetch or node-fetch.
-    fetchImpl(url: string, fetchOptions: { method: 'POST', headers: any, body: string}): any
+    // Implementation of the fetch() function.
+    // If we're running in a browser, this does not need to be provided (we'll use globaThis.fetch).
+    // If we're running in Node.js, this DOES need to be provided. (such as from the 'node-fetch' package)
+    fetch?: FetchImpl
 }
-
-
 
 export class HttpClient<RequestType, ResponseType> implements ConnectionTransport<RequestType, ResponseType> {
     name = "HttpClient"
@@ -32,9 +34,19 @@ export class HttpClient<RequestType, ResponseType> implements ConnectionTranspor
     outgoingRequestFlushTimer = null;
     flushDelayMs = 50;
     setupOptions: SetupOptions
+    fetchImpl: FetchImpl
 
     constructor(setupOptions: SetupOptions) {
         this.setupOptions = setupOptions;
+
+        this.fetchImpl = setupOptions.fetch;
+
+        if (!this.fetchImpl) {
+            if (!globalThis.fetch) {
+                throw new Error(`HttpClient: no fetch implementation provided and no global fetch available`);
+            }
+            this.fetchImpl = globalThis.fetch.bind(globalThis);
+        }
 
         // The HTTP fetch is made on-demand, so immediately put us in 'ready' state.
         this.incomingEvents.item({ t: TransportEventType.connection_ready });
@@ -104,7 +116,7 @@ export class HttpClient<RequestType, ResponseType> implements ConnectionTranspor
             let fetchResponse;
 
             try {
-                fetchResponse = await this.setupOptions.fetchImpl(
+                fetchResponse = await this.fetchImpl(
                     fullUrl, {
                     method,
                     headers: {

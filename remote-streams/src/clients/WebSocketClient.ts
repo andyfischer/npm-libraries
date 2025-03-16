@@ -1,5 +1,5 @@
 
-import { ConnectionTransport, TransportMessage, TransportEventType } from './TransportTypes'
+import { ConnectionTransport, TransportMessage, TransportEventType } from '../TransportTypes'
 import { Stream, captureError } from '@andyfischer/streams'
 
 const VerboseLogMessages = false;
