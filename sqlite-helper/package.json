@@ -9,7 +9,7 @@
         "build": "tsc -p ."
     },
     "dependencies": {
-        "@andyfischer/query": "0.1.0",
+        "@andyfischer/query": "^0.1.0",
         "@andyfischer/streams": "^0.1.0",
         "better-sqlite3": "11.8.1",
         "vitest": "^3.0.6"

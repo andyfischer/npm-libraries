@@ -1,6 +1,6 @@
 {
   "name": "@andyfischer/node-tool",
-  "version": "0.0.8",
+  "version": "0.1.0",
   "license": "MIT",
   "description": "Helper framework for a Node.js based tool",
   "main": "dist/index.js",
