@@ -2,7 +2,6 @@
     "name": "@andyfischer/sqlite-helper",
     "version": "0.1.0",
     "main": "dist/index.js",
-    "private": true,
     "scripts": {
         "test": "vitest",
         "fix": "prettier \"**/*.{ts,tsx}\" --write",
