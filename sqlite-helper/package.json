@@ -1,0 +1,22 @@
+{
+    "name": "@andyfischer/sqlite-helper",
+    "version": "0.1.0",
+    "main": "dist/index.js",
+    "private": true,
+    "scripts": {
+        "test": "vitest",
+        "fix": "prettier \"**/*.{ts,tsx}\" --write",
+        "dev": "tsc-watch --onSuccess \"node ./dist/cli/startCli.js\"",
+        "build": "tsc -p ."
+    },
+    "dependencies": {
+        "@andyfischer/query": "0.1.0",
+        "@andyfischer/streams": "^0.1.0",
+        "better-sqlite3": "11.8.1",
+        "vitest": "^3.0.6"
+    },
+    "devDependencies": {
+        "@types/node": "22.13.0",
+        "typescript": "5.7.3"
+    }
+}
