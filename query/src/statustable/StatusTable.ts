@@ -67,11 +67,11 @@ function tableWaitForData() {
 
     listenerStream.pipe((msg: StreamEvent) => {
         if (table.hasError()) {
-            listenerStream.stopReceiving();
+            listenerStream.stopListening();
             reject(table.getError());
         }
         else if (!table.isLoading()) {
-            listenerStream.stopReceiving();
+            listenerStream.stopListening();
             resolve();
         }
     });

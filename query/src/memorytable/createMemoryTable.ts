@@ -6,7 +6,7 @@ import { getSingleValue, listAll, each, count,
         first } from './RuntimeFunctions'
 import { diffTables } from '../table/diff'
 import { wrapTableInDebugProxy } from '../table/TableDebugProxy'
-import { c_item, StreamListeners } from '@andyfischer/streams'
+import { c_item, StreamDispatcher } from '@andyfischer/streams'
 import { EnableTableProxyWrapper, EnableDebugMonitor } from '../Config'
 import { preInsert } from './RuntimeInsert'
 import { getWithAttrs, groupByAttrs, hasWithAttr, listWithAttr, listWithAttrs } from './RuntimeGet'
@@ -278,7 +278,7 @@ export function createMemoryTable<ItemType = any>(schema: Schema): Table<ItemTyp
             break;
         }
         case 'init_listener_streams': {
-            table.listenerStreams = new StreamListeners();
+            table.listenerStreams = new StreamDispatcher();
             break;
         }
         case 'run_initializer': {

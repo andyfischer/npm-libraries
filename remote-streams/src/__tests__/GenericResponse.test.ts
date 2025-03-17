@@ -12,7 +12,7 @@ it("handles incoming schema hints - single item result", () => {
     const stream = new Stream();
     stream.pipe(receiveEvent);
 
-    dynamicOutputToStream({ itemData: 123}, stream);
+    dynamicOutputToStream({ itemData: 123 }, stream);
 
     expect(table.get()).toEqual({ itemData: 123});
     expect(Array.from(table.each())).toEqual([{itemData: 123}]);

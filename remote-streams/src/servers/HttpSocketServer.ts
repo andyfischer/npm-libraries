@@ -1,4 +1,3 @@
-import { RequestDispatch } from "../RequestDispatch";
 import HTTP from 'http'
 import WebSocket from 'ws';
 import { createNestedLoggerStream } from "@andyfischer/streams";
@@ -20,7 +19,7 @@ interface ActiveHttpServer {
     port: number
 }
 
-export async function startHttpServer(settings: ServerSettings): Promise<ActiveHttpServer> {
+export async function setupHttpServer(settings: ServerSettings): Promise<ActiveHttpServer> {
     const httpServer = HTTP.createServer();
 
     const log = createNestedLoggerStream('HttpServer');
@@ -73,7 +72,6 @@ export async function startHttpServer(settings: ServerSettings): Promise<ActiveH
             return;
         }
 
-        console.warn('[HttpServer] Requested path not found:', path);
         res.writeHead(404);
         res.write('Not found');
         res.end();

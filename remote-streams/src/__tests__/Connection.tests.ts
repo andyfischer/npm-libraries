@@ -1,12 +1,12 @@
 
 import { it, expect } from 'vitest'
 import { Connection } from '../Connection'
-import { TransportMessage, TransportEventType } from '../TransportTypes'
+import { TransportEvent, TransportEventType } from '../TransportTypes'
 import { Stream, c_done, c_item } from '@andyfischer/streams'
 
 function fakeTransport({simulateFailure}: { simulateFailure?: () => boolean } = {}) {
     let log = [];
-    let incomingEvents: Stream<TransportMessage<any>>;
+    let incomingEvents: Stream<TransportEvent<any>>;
 
     return {
         log,
@@ -92,7 +92,7 @@ it("reattempts connection if it fails (initial attempt)", () => {
 });
 
 it("cleans up on close", () => {
-    const { log, connect, getIncomingEventsStream } = fakeTransport();
+    const { connect, getIncomingEventsStream } = fakeTransport();
 
     const connection = new Connection({
         connect,

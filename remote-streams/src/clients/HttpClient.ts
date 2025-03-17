@@ -1,11 +1,11 @@
 
-import { c_done, c_fail, captureError, exceptionIsBackpressureStop, recordUnhandledError, Stream } from '@andyfischer/streams'
+import { c_done, c_fail, captureError, ErrorDetails, exceptionIsBackpressureStop, recordUnhandledError, Stream } from '@andyfischer/streams'
 import { JsonSplitDecoder } from '../utils/splitJson';
-import { ConnectionTransport, TransportEventType, TransportMessage, TransportRequest } from '../TransportTypes';
+import { Transport, TransportEventType, TransportEvent, TransportRequest, TransportToConnectionLayer } from '../TransportTypes';
 import { IDSource } from '@andyfischer/streams'
 import { readStreamingFetchResponse } from '../utils/readStreamingFetchResponse';
 
-const VerboseLogHttpClient = false;
+const EnableVerboseLogs = false;
 
 export interface PostBody<RequestType> {
     messages: TransportRequest<RequestType>[]
@@ -22,11 +22,13 @@ interface SetupOptions {
     // If we're running in a browser, this does not need to be provided (we'll use globaThis.fetch).
     // If we're running in Node.js, this DOES need to be provided. (such as from the 'node-fetch' package)
     fetch?: FetchImpl
+
+    connection: TransportToConnectionLayer
 }
 
-export class HttpClient<RequestType, ResponseType> implements ConnectionTransport<RequestType, ResponseType> {
+export class HttpClient<RequestType, ResponseType> implements Transport<RequestType, ResponseType> {
     name = "HttpClient"
-    incomingEvents: Stream<TransportMessage<RequestType>> = new Stream();
+    connection: TransportToConnectionLayer
 
     httpRequestId = new IDSource();
     queuedOutgoingRequests: TransportRequest<RequestType>[] = [];
@@ -37,7 +39,10 @@ export class HttpClient<RequestType, ResponseType> implements ConnectionTranspor
     fetchImpl: FetchImpl
 
     constructor(setupOptions: SetupOptions) {
+        verboseLog('new client created', setupOptions);
+
         this.setupOptions = setupOptions;
+        this.connection = setupOptions.connection;
 
         this.fetchImpl = setupOptions.fetch;
 
@@ -49,10 +54,12 @@ export class HttpClient<RequestType, ResponseType> implements ConnectionTranspor
         }
 
         // The HTTP fetch is made on-demand, so immediately put us in 'ready' state.
-        this.incomingEvents.item({ t: TransportEventType.connection_ready });
+        this.connection.sendTransportEvent({ t: TransportEventType.connection_ready });
     }
 
-    send(message: TransportMessage<RequestType>) {
+    send(message: TransportEvent<RequestType>) {
+        verboseLog('send()', message);
+
         switch (message.t) {
             case TransportEventType.request:
                 this.queuedOutgoingRequests.push(message);
@@ -116,6 +123,10 @@ export class HttpClient<RequestType, ResponseType> implements ConnectionTranspor
             let fetchResponse;
 
             try {
+                if (EnableVerboseLogs) {
+                    console.log('HttpClient (req #${httpRequestId}) sending HTTP request');
+                }
+
                 fetchResponse = await this.fetchImpl(
                     fullUrl, {
                     method,
@@ -128,16 +139,15 @@ export class HttpClient<RequestType, ResponseType> implements ConnectionTranspor
             } catch (e) {
 
                 // Protocol error when trying to call fetch(). Kill all requests with an error.
-                const error = {
+                const error: ErrorDetails = {
                     ...captureError(e),
-                    errorLayer: 'http_client',
+                    errorType: 'connection_failed',
                 };
 
-                if (VerboseLogHttpClient)
-                    console.log(`HttpClient (req #${httpRequestId})  got a fetch exception, closing with error`, { e });
+                verboseLog(`HttpClient (req #${httpRequestId})  got a fetch exception, closing with error`, { e });
 
                 try {
-                    this.incomingEvents.item({ t: TransportEventType.connection_lost, cause: error, shouldRetry: false });
+                    this.connection.sendTransportEvent({ t: TransportEventType.connection_lost, cause: error, shouldRetry: false });
                 } catch (e) { }
 
                 return;
@@ -147,20 +157,23 @@ export class HttpClient<RequestType, ResponseType> implements ConnectionTranspor
             if (fetchResponse.status !== 200) {
                 const error = {
                     errorType: 'http_error_status',
-                    errorLayer: 'http_client',
                     errorMessage: `HTTP request had failure status code (${fetchResponse.status})`,
                     errorMessageBody: await fetchResponse.text(),
+                    details: {
+                        httpStatus: fetchResponse.status,
+                        httpStatusText: fetchResponse.statusText,
+                    }
                 }
 
                 const shouldRetry = fetchResponse.status === 429 || fetchResponse.status === 503;
 
-                if (VerboseLogHttpClient) {
+                if (EnableVerboseLogs) {
                     console.log(`HttpClient (req #${httpRequestId}) got an error code, closing all with error`);
                     console.log(new Error());
                 }
 
                 try {
-                    this.incomingEvents.item({ t: TransportEventType.connection_lost, cause: error, shouldRetry });
+                    this.connection.sendTransportEvent({ t: TransportEventType.connection_lost, cause: error, shouldRetry });
                 } catch (e) {
                     console.error('HttpClient: uncaught error while sending error message', { e });
                     if (exceptionIsBackpressureStop(e))
@@ -174,29 +187,29 @@ export class HttpClient<RequestType, ResponseType> implements ConnectionTranspor
 
             // Read the response body as a stream of JSON messages.
             for await (const chunk of readStreamingFetchResponse(fetchResponse)) {
-                if (VerboseLogHttpClient)
+                if (EnableVerboseLogs)
                     console.log(`HttpClient (req #${httpRequestId}) onChunk`, chunk)
 
                 if (!chunk)
                     continue;
                     
                 try {
-                    for (let message of jsonSplitDecoder.receive(chunk)) {
-                        message = message as TransportMessage<ResponseType>;
-                        if (VerboseLogHttpClient)
-                            console.log(`HttpClient (req #${httpRequestId}) received message:`, message);
+                    for (let event of jsonSplitDecoder.receive(chunk)) {
+                        event = event as TransportEvent<ResponseType>;
+                        if (EnableVerboseLogs)
+                            console.log(`HttpClient (req #${httpRequestId}) received message:`, event);
 
-                        switch (message.t) {
+                        switch (event.t) {
                             // Check if this closes any open streams in streamIdsInThisBatch.
                             case TransportEventType.response_event:
-                                if (message.evt.t === c_fail || message.evt.t === c_done) {
-                                    openStreamsInThisRequest.delete(message.streamId);
+                                if (event.evt.t === c_fail || event.evt.t === c_done) {
+                                    openStreamsInThisRequest.delete(event.streamId);
                                 }
                                 break;
                         }
 
                         try {
-                            this.incomingEvents.item(message);
+                            this.connection.sendTransportEvent(event);
                         } catch (e) {
                             if (exceptionIsBackpressureStop(e)) {
                                 console.log(`HttpClient (req #${httpRequestId}) is backpressure stopped`);
@@ -212,19 +225,17 @@ export class HttpClient<RequestType, ResponseType> implements ConnectionTranspor
                 }
             }
 
-            if (VerboseLogHttpClient)
+            if (EnableVerboseLogs)
                 console.log(`HttpClient (req #${httpRequestId})  onResponseStreamDone`)
 
             // Finished handling all the incoming data from the HTTP response.
 
             // If the remote side had any leftover open streams, close them now.
             if (openStreamsInThisRequest.size > 0) {
-                if (VerboseLogHttpClient) {
-                    console.log(`HttpClient (req #${httpRequestId}): Finished reading response body, closing unfinished streams:`, openStreamsInThisRequest);
-                }
+                verboseLog(`HttpClient (req #${httpRequestId}): Finished reading response body, closing unfinished streams:`, openStreamsInThisRequest);
                 for (const streamId of openStreamsInThisRequest.keys()) {
                     try {
-                        this.incomingEvents.item({
+                        this.connection.sendTransportEvent({
                             t: TransportEventType.response_event,
                             streamId,
                             evt: { t: c_fail, error: {
@@ -242,4 +253,9 @@ export class HttpClient<RequestType, ResponseType> implements ConnectionTranspor
 
     close() {
     }
+}
+
+function verboseLog(...args: any[]) {
+    if (EnableVerboseLogs)
+        console.log(...['[HttpClient]', ...args]);
 }

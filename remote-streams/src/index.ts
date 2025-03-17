@@ -9,7 +9,7 @@ export { setupGenericResponseTable } from './GenericResponse'
 export type { RequestClient } from './RequestClient'
 
 // Servers
-export { startHttpServer } from './servers/HttpSocketServer'
+export { setupHttpServer as startHttpServer } from './servers/HttpSocketServer'
 
 // Clients
 export { HttpClient } from './clients/HttpClient'

@@ -2,8 +2,8 @@
 import { ErrorDetails, Stream, StreamEvent } from '@andyfischer/streams'
 
 export enum TransportEventType {
-    // Start a request. The respoding side will start sending TransportResponseEvents with the
-    // same streamId.
+    // Start a request. The respoding side will start sending TransportResponseEvent events
+    // with the same streamId.
     request = 602,
 
     // Response data for a request.
@@ -52,7 +52,7 @@ export interface TransportRequest<RequestType> {
  *
  * Receive a response event to a client-level request.
  */
-export interface TransportResponseEvent {
+export interface TransportResponseStreamEvent {
     t: TransportEventType.response_event
     evt: StreamEvent
     streamId: number
@@ -88,9 +88,9 @@ interface ConnectionMetadata {
     sender?: any
 }
 
-export type TransportMessage<RequestType> =
+export type TransportEvent<RequestType> =
     TransportRequest<RequestType>
-    | TransportResponseEvent
+    | TransportResponseStreamEvent
     | ConnectionReady
     | ConnectionLost
     | ConnectionMetadata;
@@ -102,8 +102,13 @@ export type TransportMessage<RequestType> =
  *
  * This is used to implement the actual connection (whether it's a web socket, HTTP or other).
  */
-export interface ConnectionTransport<RequestType, ResponseType> {
-    send(message: TransportMessage<RequestType>): void
-    incomingEvents: Stream< TransportMessage<RequestType> >
+export interface Transport<RequestType, ResponseType> {
+    send(message: TransportEvent<RequestType>): void
     close(): void
 }
+
+export interface TransportToConnectionLayer {
+    sendTransportEvent(event: TransportEvent<any>): void
+}
+
+export type TransportInitFunc<RequestType,ResponseType> = (connection: TransportToConnectionLayer) => Transport<RequestType,ResponseType>

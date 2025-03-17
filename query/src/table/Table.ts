@@ -1,7 +1,7 @@
 
 import type { Schema } from '../schema/Schema'
 import type { MultiMap } from '../utils/MultiMap'
-import type { Stream, StreamEvent, StreamListeners } from "@andyfischer/streams"
+import type { Stream, StreamEvent, StreamDispatcher } from "@andyfischer/streams"
 import type { StatusTableItem } from '../statustable/StatusTable'
 import type { DiffItem } from './diff'
 import type { StreamToTableCallbacks } from './streamToTable'
@@ -40,7 +40,7 @@ export interface Table<ItemType = any> {
     checkInvariants(): void
 
     // Sharing data via listeners
-    listenerStreams: StreamListeners<ItemType, TableListenPlan>
+    listenerStreams: StreamDispatcher<ItemType, TableListenPlan>
     listen(options?: ListenToTableOptions): Stream
 
     // Importing data from a stream

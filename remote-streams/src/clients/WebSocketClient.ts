@@ -1,5 +1,5 @@
 
-import { ConnectionTransport, TransportMessage, TransportEventType } from '../TransportTypes'
+import { Transport, TransportEvent, TransportEventType } from '../TransportTypes'
 import { Stream, captureError } from '@andyfischer/streams'
 
 const VerboseLogMessages = false;
@@ -19,9 +19,9 @@ interface WebSocket {
     readyState: number
 }
 
-export class WebSocketClient<RequestType,ResponseType> implements ConnectionTransport<RequestType, ResponseType> {
+export class WebSocketClient<RequestType,ResponseType> implements Transport<RequestType, ResponseType> {
     socket: WebSocket
-    incomingEvents: Stream<TransportMessage<RequestType>> = new Stream();
+    incomingEvents: Stream<TransportEvent<RequestType>> = new Stream();
     name = "WebSocketClient"
 
     constructor(socket: WebSocket, { alreadyConnected }: SetupOptions = {}) {
@@ -90,7 +90,7 @@ export class WebSocketClient<RequestType,ResponseType> implements ConnectionTran
         });
     }
 
-    send(message: TransportMessage<RequestType>) {
+    send(message: TransportEvent<RequestType>) {
 
         if (VerboseLogMessages)
             console.log(`${this.name} sending`, message);

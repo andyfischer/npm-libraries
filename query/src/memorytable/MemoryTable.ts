@@ -1,4 +1,4 @@
-import { StreamListeners } from "@andyfischer/streams";
+import { StreamDispatcher } from "@andyfischer/streams";
 import { Schema, Table } from "../table";
 import { checkInvariantsOnTable } from "../table/checkInvariants";
 import { consoleLogTable } from "../table/debugFunctions";
@@ -67,7 +67,7 @@ export class MemoryTable<ItemType = any> {
     indexes: Map<string,TableIndex>
     defaultIndex?: TableIndex<any>;
     attrData = new Map<string, any>();
-    listenerStreams: StreamListeners<ItemType, TableListenPlan> = null;
+    listenerStreams: StreamDispatcher<ItemType, TableListenPlan> = null;
     items: any;
     indexType: any;
 

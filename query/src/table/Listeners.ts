@@ -46,7 +46,7 @@ export function listenToTable(table: Table, options: ListenToTableOptions = {}) 
             deletionFunc: deletionFuncName,
         };
 
-        stream = table.listenerStreams.add(plan);
+        stream = table.listenerStreams.newListener({ metadata: plan });
 
         // Prepare for deletion events using this specific key.
         const schema: SchemaDecl = {
@@ -58,7 +58,7 @@ export function listenToTable(table: Table, options: ListenToTableOptions = {}) 
         stream.event({ t: c_schema, schema: schema as any });
     } else {
         // No listen plan. Prepare for any deletion events that the table supports.
-        stream = table.listenerStreams.add();
+        stream = table.listenerStreams.newListener();
         stream.event({ t: c_schema, schema: getSchemaForListener(table.schema) as any });
     }
 

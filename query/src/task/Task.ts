@@ -2,7 +2,7 @@
 import { Plan } from '../query/QueryPlan'
 import { Graph } from '../graph'
 import { Query, QueryLike, QueryParameters } from '../query'
-import { c_log, c_log_info, Stream } from "@andyfischer/streams"
+import { c_log_info, Stream } from "@andyfischer/streams"
 
 export interface Args {
     graph: Graph
@@ -69,6 +69,6 @@ export class Task {
     }
 
     log(message: string, data?: any) {
-        this.output.event({ t: c_log, message, level: c_log_info, details: { data } })
+        this.output.event({ t: c_log_info, message, details: { data } })
     }
 }

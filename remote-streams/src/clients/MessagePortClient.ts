@@ -1,13 +1,13 @@
 
 import { Port } from '../utils/Port'
 import { Stream } from '@andyfischer/streams'
-import { TransportMessage, ConnectionTransport, TransportEventType } from '../TransportTypes'
+import { TransportEvent, Transport, TransportEventType } from '../TransportTypes'
 
 const VerboseLog = false;
 
-export class MessagePortClient<RequestType, ResponseType> implements ConnectionTransport<RequestType, ResponseType>{
+export class MessagePortClient<RequestType, ResponseType> implements Transport<RequestType, ResponseType>{
     port: Port
-    incomingEvents: Stream<TransportMessage<RequestType>> = new Stream()
+    incomingEvents: Stream<TransportEvent<RequestType>> = new Stream()
     onClose?: () => void
     hasRecordedSender = false
 
@@ -47,7 +47,7 @@ export class MessagePortClient<RequestType, ResponseType> implements ConnectionT
         });
     }
 
-    onMessage(message: TransportMessage<RequestType>) {
+    onMessage(message: TransportEvent<RequestType>) {
         switch (message.t) {
             case TransportEventType.request:
             case TransportEventType.response_event:
@@ -59,7 +59,7 @@ export class MessagePortClient<RequestType, ResponseType> implements ConnectionT
         }
     }
 
-    send(message: TransportMessage<RequestType>) {
+    send(message: TransportEvent<RequestType>) {
         try {
 
             if (VerboseLog)

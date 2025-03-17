@@ -1,8 +1,8 @@
 
 import type { IncomingMessage as HttpRequest, ServerResponse as HttpResponse } from 'http'
 import { Stream, c_done, c_fail, recordUnhandledError, IDSource, captureError } from '@andyfischer/streams'
-import { Connection, RequestDispatch } from '..'
-import { TransportEventType, TransportMessage, TransportRequest } from '../TransportTypes';
+import { Connection, } from '../Connection'
+import { TransportEventType, TransportEvent, TransportRequest } from '../TransportTypes';
 import { PostBody } from '../clients/HttpClient';
 import { callbackBasedIterator } from '@andyfischer/streams';
 
@@ -87,28 +87,16 @@ export class HttpRequestHandler<RequestType = any, ResponseType = any> {
         }
 
         // Start handling the request messages
-
         httpRes.writeHead(200, {
             'Content-Type': 'application/json',
             'Transfer-Encoding': 'chunked',
         });
-
-        // Track the stream IDs so that we know when all the responses are done.
-        const streamIdsInThisBatch = new Set<number>();
         
-        for (const message of messages) {
-            if (!message.streamId) {
-                console.warn('HTTPRequestHandler: malformed incoming message, missing streamId');
-                continue;;
-            }
-            streamIdsInThisBatch.add(message.streamId);
-        }
-        
+        // Create a short-lived Connection which handles all the requests in this body.
         let connection: Connection<any,any> | null = null;
 
         const transport = {
-            incomingEvents: new Stream<TransportMessage<any>>(),
-            send(message: TransportMessage<any>) {
+            send(message: TransportEvent<any>) {
                 try {
                     if (VerboseLogHttpServer)
                         console.log(`HTTPServer (req #${requestId}) sending response chunk:`, message);
@@ -128,24 +116,6 @@ export class HttpRequestHandler<RequestType = any, ResponseType = any> {
                 } catch (e) {
                     recordUnhandledError(e);
                 }
-
-                switch (message.t) {
-                    case TransportEventType.response_event:
-                        switch (message.evt.t) {
-                            case c_done:
-                            case c_fail:
-                                streamIdsInThisBatch.delete(message.streamId);
-                        }
-
-                        if (streamIdsInThisBatch.size === 0) {
-                            setImmediate(() => {
-                                connection!.close();
-                            });
-                        }
-
-                        break;
-                }
-
             },
             close() {
                 // Close the HTTP response
@@ -155,18 +125,19 @@ export class HttpRequestHandler<RequestType = any, ResponseType = any> {
             }
         }
 
-        transport.incomingEvents.item({ t: TransportEventType.connection_ready });
-
-        // Bring in all incoming requests from the POST.
-        for (const message of messages) {
-            transport.incomingEvents.item(message);
-        }
-        
-        // Set up the Connection with the api, which will consume all the incoming events.
         connection = new Connection<ResponseType, RequestType>({
             enableReconnection: false,
             connect: () => transport,
             handleRequest: this.handleRequest,
         });
+
+        connection.onTransportEvent({ t: TransportEventType.connection_ready });
+
+        // Bring in all incoming requests from the POST.
+        for (const message of messages) {
+            connection.onTransportEvent(message);
+        }
+
+        // TODO- Close any hanging requests.
     }
 }
