@@ -219,7 +219,8 @@ export class Connection<RequestType = any, IncomingRequestType = any> implements
                     return;
                 }
 
-                setImmediate(() => this.onTransportEvent(evt));
+                // Send events on a delay to avoid concurrency bugs.
+                setTimeout(() => this.onTransportEvent(evt), 0);
             }
         }
 
