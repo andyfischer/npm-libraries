@@ -6,7 +6,7 @@ import { Table, Schema, lazySchema } from '../table'
 import { GraphModule } from './GraphModule'
 import { declaredFunctionToHandler } from '../handler/NativeCallback';
 import { createPlan, ExpectedValue, executePlan, QueryParameters } from '../query'
-import { parseFileQueries } from '../parser/parseFile'
+import { parseFile } from '../parser/parseFile'
 
 export type QueryParametersLike = Map<string,any> | object
 
@@ -100,7 +100,7 @@ export class Graph implements GraphLike {
     }
 
     runQueryFile(contents: string) {
-        const parsed = parseFileQueries(contents);
+        const parsed = parseFile(contents);
         for (const query of parsed) {
             const output = this.query(query);
         }

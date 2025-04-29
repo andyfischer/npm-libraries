@@ -1,10 +1,10 @@
 
 import { Query } from '../../query';
 import { it, expect } from 'vitest'
-import { parseFileQueries } from '../parseFile'
+import { parseFile } from '../parseFile'
 
 it('parses a file with a single query', () => {
-    const parsed = parseFileQueries('a b c');
+    const parsed = parseFile('a b c');
     expect(parsed.length).toEqual(1);
     expect((parsed[0] as Query).tags[0].attr).toEqual('a');
     expect((parsed[0] as Query).tags[1].attr).toEqual('b');
@@ -12,7 +12,7 @@ it('parses a file with a single query', () => {
 });
 
 it('parses a file with a single query across multiple lines', () => {
-    const parsed = parseFileQueries(`
+    const parsed = parseFile(`
         include (
             a
             b
@@ -26,7 +26,7 @@ it('parses a file with a single query across multiple lines', () => {
 });
 
 it('parses a file with multiple queries (seperated by semicolons)', () => {
-    const parsed = parseFileQueries(`
+    const parsed = parseFile(`
         a b c;
         d e f;
     `);
@@ -35,7 +35,7 @@ it('parses a file with multiple queries (seperated by semicolons)', () => {
 });
 
 it('parses a file with multiple queries (seperated by newlines)', () => {
-    const parsed = parseFileQueries(`
+    const parsed = parseFile(`
         a b c
         d e f
     `);
@@ -44,7 +44,7 @@ it('parses a file with multiple queries (seperated by newlines)', () => {
 });
 
 it('parses a file with multiline queries (using indentation)', () => {
-    const parsed = parseFileQueries(`
+    const parsed = parseFile(`
         a
           b c
         d e
@@ -54,7 +54,7 @@ it('parses a file with multiline queries (using indentation)', () => {
     expect(parsed.map((q:any) => q.toQueryString())).toEqual(['a b c', 'd e f']);
 });
 it('parses another file with indentation', () => {
-    const parsed = parseFileQueries(
+    const parsed = parseFile(
         'deploy-settings\n' +
         ' project-name=proj\n' +
         ' dest-url=http://host\n' +
@@ -75,7 +75,7 @@ it('parses another file with indentation', () => {
 });
 
 it('ignores comment lines that start with #', () => {
-    const parsed = parseFileQueries(
+    const parsed = parseFile(
         '  # this is a comment\n' + 
         'deploy-settings\n' +
         ' dest-url=http://host\n'
@@ -87,7 +87,7 @@ it('ignores comment lines that start with #', () => {
 });
 
 it('ignores comment lines inside a nested query', () => {
-    const parsed = parseFileQueries(
+    const parsed = parseFile(
         'deploy-settings\n' +
         '  # this is a comment\n' + 
         ' dest-url=http://host\n'

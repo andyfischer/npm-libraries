@@ -2,11 +2,11 @@ import { LexedText, t_hash, t_line_comment, t_semicolon, t_space } from "../lexe
 import { Query, QueryNode } from "../query";
 import { parseQueryFromTokens } from "./parseQuery";
 
-export function parseFileQueries(str: string): Query[] {
+export function parseFile(fileContents: string): Query[] {
     let queries: Query[] = [];
 
     try {
-        const lexed = new LexedText(str, {
+        const lexed = new LexedText(fileContents, {
             bashStyleLineComments: true,
         });
 
@@ -39,7 +39,7 @@ export function parseFileQueries(str: string): Query[] {
             }
 
             if (result.t === 'multistep') {
-                throw new Error(`Didn't expect multistep query in parseFileQueries: ` + result.toQueryString() );
+                throw new Error(`Didn't expect multistep query in parseFile: ` + result.toQueryString() );
             }
         }
 
@@ -49,5 +49,3 @@ export function parseFileQueries(str: string): Query[] {
     }
 }
 
-export function runFileQueriesWithHandlers() {
-}

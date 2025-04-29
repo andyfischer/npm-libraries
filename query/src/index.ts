@@ -10,4 +10,5 @@ export type { GraphLike, QueryParametersLike } from './graph/Graph'
 export { Graph } from './graph/Graph'
 export { TableFormatState, newTableFormatState, formatItems, updateStateForItems,
     formatHeader, printItems } from './console/TableFormatter'
+export { parseFile } from './parser/parseFile'
 export * from './lexer'
