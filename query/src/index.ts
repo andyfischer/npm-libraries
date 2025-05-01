@@ -12,3 +12,4 @@ export { TableFormatState, newTableFormatState, formatItems, updateStateForItems
     formatHeader, printItems } from './console/TableFormatter'
 export { parseFile } from './parser/parseFile'
 export * from './lexer'
+export { streamToTable } from './table/streamToTable'
