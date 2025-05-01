@@ -17,8 +17,8 @@
     "README.md"
   ],
   "dependencies": {
-    "@andyfischer/query": "^0.1.0",
-    "@andyfischer/streams": "^0.1.0",
+    "@andyfischer/query": "^0.1.1",
+    "@andyfischer/streams": "^0.1.1",
     "ws": "8.18.0"
   },
   "devDependencies": {

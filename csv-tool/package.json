@@ -1,6 +1,6 @@
 {
   "name": "@andyfischer/csv-tool",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "description": "",
   "main": "dist/index.js",
@@ -22,8 +22,7 @@
     "vitest": "1.6.0"
   },
   "dependencies": {
-    "@andyfischer/streams": "^0.1.0",
+    "@andyfischer/streams": "^0.1.1",
     "source-map-support": "0.5.21"
   }
 }
-

@@ -1,6 +1,6 @@
 {
     "name": "@andyfischer/sqlite-helper",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "main": "dist/index.js",
     "license": "MIT",
     "scripts": {
@@ -10,8 +10,8 @@
         "build": "tsc -p ."
     },
     "dependencies": {
-        "@andyfischer/query": "^0.1.0",
-        "@andyfischer/streams": "^0.1.0",
+        "@andyfischer/query": "^0.1.1",
+        "@andyfischer/streams": "^0.1.1",
         "better-sqlite3": "11.8.1",
         "vitest": "^3.0.6"
     },
