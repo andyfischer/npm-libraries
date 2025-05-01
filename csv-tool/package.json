@@ -24,5 +24,6 @@
   "dependencies": {
     "@andyfischer/streams": "^0.1.1",
     "source-map-support": "0.5.21"
-  }
+  },
+  "gitHead": "2d5e5e23e9e8bd7ec6ff60debe8bd886b9ba393f"
 }
