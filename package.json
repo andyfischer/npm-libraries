@@ -5,6 +5,7 @@
   },
   "workspaces": [
     "cli-helper",
+    "csv-tool",
     "query",
     "react-elements",
     "remote-streams",
