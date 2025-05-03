@@ -50,13 +50,12 @@ it("creates a connection using the connect() function", () => {
         connect,
     });
 
-    expect(connection.status).toEqual('ready');
+    expect(connection.status).toEqual('waiting_for_ready');
     connection.sendRequest('req1', new Stream());
 
     expect(log).toEqual([
         'called connect()',
         'simulating connection success',
-        'send: {"t":602,"req":"req1","streamId":1}'
     ]);
 });
 
@@ -91,33 +90,34 @@ it("reattempts connection if it fails (initial attempt)", () => {
     ]);
 });
 
-it("cleans up on close", () => {
+it("cleans up on close", async () => {
     const { connect, getIncomingEventsStream } = fakeTransport();
 
     const connection = new Connection({
         connect,
     });
 
-    expect(connection.status).toEqual('ready');
+    expect(connection.status).toEqual('waiting_for_ready');
 
     const req1stream = new Stream();
     connection.sendRequest('req1', req1stream);
-
     connection.close();
 
     expect(connection.status).toEqual('permanent_close');
+    await req1stream.promiseEvents();
     expect(getIncomingEventsStream().isClosed()).toEqual(true);
     expect(req1stream.isClosed()).toEqual(true);
+
 });
 
-it("sends messages over the transport", () => {
+it("sends messages over the transport", async () => {
     const { log, connect, getIncomingEventsStream } = fakeTransport();
 
     const connection = new Connection({
         connect,
     });
 
-    expect(connection.status).toEqual('ready');
+    expect(connection.status).toEqual('waiting_for_ready');
 
     const req1stream = new Stream();
     connection.sendRequest('req1', req1stream);
@@ -125,6 +125,6 @@ it("sends messages over the transport", () => {
     getIncomingEventsStream().item({ t: TransportEventType.response_event, streamId: 1, evt: { t: c_item, item: 123 }});
     getIncomingEventsStream().item({ t: TransportEventType.response_event, streamId: 1, evt: { t: c_done }});
 
-    expect(req1stream.takeItemsSync()).toEqual([123]);
+    expect(await req1stream.promiseItems()).toEqual([123]);
 });
 

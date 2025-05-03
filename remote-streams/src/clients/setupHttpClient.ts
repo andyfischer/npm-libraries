@@ -13,10 +13,9 @@ export interface SetupOptions {
 
 export function setupHttpClient(setupOptions: SetupOptions) {
     return new Connection({
-        connect: (conn) => new HttpClient({
+        connect: () => new HttpClient({
             url: setupOptions.url,
             fetch: setupOptions.fetch,
-            connection: conn,
         })
     });
 }

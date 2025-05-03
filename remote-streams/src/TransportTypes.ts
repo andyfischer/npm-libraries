@@ -105,10 +105,5 @@ export type TransportEvent<RequestType> =
 export interface Transport<RequestType, ResponseType> {
     send(message: TransportEvent<RequestType>): void
     close(): void
+    incomingEvents: Stream<TransportEvent<RequestType>>
 }
-
-export interface TransportToConnectionLayer {
-    sendTransportEvent(event: TransportEvent<any>): void
-}
-
-export type TransportInitFunc<RequestType,ResponseType> = (connection: TransportToConnectionLayer) => Transport<RequestType,ResponseType>

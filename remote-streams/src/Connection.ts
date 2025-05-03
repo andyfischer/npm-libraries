@@ -3,10 +3,11 @@ import { Table, compileSchema } from '@andyfischer/query'
 import { RequestClient } from './RequestClient'
 import { Stream, c_done, c_fail, BackpressureStop, StreamProtocolValidator,
     recordUnhandledError, ErrorDetails, StreamEvent, 
-    IDSource} from '@andyfischer/streams'
+    IDSource,
+    c_item} from '@andyfischer/streams'
 import { MessageBuffer } from './MessageBuffer'
 import { TransportEventType } from './TransportTypes'
-import type { Transport, TransportEvent, TransportInitFunc, TransportRequest, TransportToConnectionLayer } from './TransportTypes'
+import type { Transport, TransportEvent, TransportRequest } from './TransportTypes'
 
 const EnableVerboseLog = false;
 const EnableVeryVerboseLog = false;
@@ -45,7 +46,7 @@ interface SetupOptions<OutgoingRequestType,IncomingRequestType> {
 
     // Set up a connection. Maybe be called multiple times as the connection is
     // reestablished.
-    connect: TransportInitFunc<OutgoingRequestType,IncomingRequestType>
+    connect: () => Transport<OutgoingRequestType,IncomingRequestType>
 
     // Whether to enable reconnection behavior.
     //
@@ -207,31 +208,35 @@ export class Connection<RequestType = any, IncomingRequestType = any> implements
     initializeNewTransport() {
         const newTransportId = this.nextTransportId.take();
         this.currentTransportId = newTransportId;
-        let transportInstance: Transport<RequestType, IncomingRequestType>;
 
-        const incomingEvents: TransportToConnectionLayer = {
-            sendTransportEvent: (evt: TransportEvent<any>) => {
+        this.transport = this.options.connect();
+
+        if (this.transport.incomingEvents) {
+            this.transport.incomingEvents.pipe(evt => {
                 // Make sure we're not getting events after the transport has been closed.
                 if (this.currentTransportId !== newTransportId) {
-                    if (transportInstance)
-                        transportInstance.close();  
-                    transportInstance = null;
-                    return;
+                    throw new BackpressureStop();
                 }
 
-                // Send events on a delay to avoid concurrency bugs.
-                setTimeout(() => this.onTransportEvent(evt), 0);
-            }
+                switch (evt.t) {
+                    case c_item: {
+                        // Send events on a delay to avoid concurrency bugs.
+                        setTimeout(() => this.onTransportEvent(evt.item), 0);
+                        break;
+                    }
+                }
+            });
         }
-
-        transportInstance = this.options.connect(incomingEvents);
-
-        this.transport = transportInstance;
     }
 
     closeCurrentTransport() {
-        if (this.transport)
+        if (this.transport) {
+            if (this.transport.incomingEvents) {
+                this.transport.incomingEvents.stopListening();
+            }
+
             this.transport.close();
+        }
 
         this.transport = null;
         this.currentTransportId = -1;

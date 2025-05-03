@@ -1,7 +1,7 @@
 
 import { c_done, c_fail, captureError, ErrorDetails, exceptionIsBackpressureStop, recordUnhandledError, Stream } from '@andyfischer/streams'
 import { JsonSplitDecoder } from '../utils/splitJson';
-import { Transport, TransportEventType, TransportEvent, TransportRequest, TransportToConnectionLayer } from '../TransportTypes';
+import { Transport, TransportEventType, TransportEvent, TransportRequest, } from '../TransportTypes';
 import { IDSource } from '@andyfischer/streams'
 import { readStreamingFetchResponse } from '../utils/readStreamingFetchResponse';
 
@@ -22,13 +22,10 @@ interface SetupOptions {
     // If we're running in a browser, this does not need to be provided (we'll use globaThis.fetch).
     // If we're running in Node.js, this DOES need to be provided. (such as from the 'node-fetch' package)
     fetch?: FetchImpl
-
-    connection: TransportToConnectionLayer
 }
 
 export class HttpClient<RequestType, ResponseType> implements Transport<RequestType, ResponseType> {
     name = "HttpClient"
-    connection: TransportToConnectionLayer
 
     httpRequestId = new IDSource();
     queuedOutgoingRequests: TransportRequest<RequestType>[] = [];
@@ -38,11 +35,12 @@ export class HttpClient<RequestType, ResponseType> implements Transport<RequestT
     setupOptions: SetupOptions
     fetchImpl: FetchImpl
 
+    incomingEvents: Stream<TransportEvent<RequestType>> = new Stream();
+
     constructor(setupOptions: SetupOptions) {
         verboseLog('new client created', setupOptions);
 
         this.setupOptions = setupOptions;
-        this.connection = setupOptions.connection;
 
         this.fetchImpl = setupOptions.fetch;
 
@@ -54,7 +52,7 @@ export class HttpClient<RequestType, ResponseType> implements Transport<RequestT
         }
 
         // The HTTP fetch is made on-demand, so immediately put us in 'ready' state.
-        this.connection.sendTransportEvent({ t: TransportEventType.connection_ready });
+        this.incomingEvents.item({ t: TransportEventType.connection_ready });
     }
 
     send(message: TransportEvent<RequestType>) {
@@ -147,7 +145,7 @@ export class HttpClient<RequestType, ResponseType> implements Transport<RequestT
                 verboseLog(`HttpClient (req #${httpRequestId})  got a fetch exception, closing with error`, { e });
 
                 try {
-                    this.connection.sendTransportEvent({ t: TransportEventType.connection_lost, cause: error, shouldRetry: false });
+                    this.incomingEvents.item({ t: TransportEventType.connection_lost, cause: error, shouldRetry: false });
                 } catch (e) { }
 
                 return;
@@ -173,7 +171,7 @@ export class HttpClient<RequestType, ResponseType> implements Transport<RequestT
                 }
 
                 try {
-                    this.connection.sendTransportEvent({ t: TransportEventType.connection_lost, cause: error, shouldRetry });
+                    this.incomingEvents.item({ t: TransportEventType.connection_lost, cause: error, shouldRetry });
                 } catch (e) {
                     console.error('HttpClient: uncaught error while sending error message', { e });
                     if (exceptionIsBackpressureStop(e))
@@ -209,7 +207,7 @@ export class HttpClient<RequestType, ResponseType> implements Transport<RequestT
                         }
 
                         try {
-                            this.connection.sendTransportEvent(event);
+                            this.incomingEvents.item(event);
                         } catch (e) {
                             if (exceptionIsBackpressureStop(e)) {
                                 console.log(`HttpClient (req #${httpRequestId}) is backpressure stopped`);
@@ -235,7 +233,7 @@ export class HttpClient<RequestType, ResponseType> implements Transport<RequestT
                 verboseLog(`HttpClient (req #${httpRequestId}): Finished reading response body, closing unfinished streams:`, openStreamsInThisRequest);
                 for (const streamId of openStreamsInThisRequest.keys()) {
                     try {
-                        this.connection.sendTransportEvent({
+                        this.incomingEvents.item({
                             t: TransportEventType.response_event,
                             streamId,
                             evt: { t: c_fail, error: {

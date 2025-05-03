@@ -92,10 +92,11 @@ export class HttpRequestHandler<RequestType = any, ResponseType = any> {
             'Transfer-Encoding': 'chunked',
         });
         
-        // Create a short-lived Connection which handles all the requests in this body.
+        // Create a short-lived Connection object which handles all the requests in this body.
         let connection: Connection<any,any> | null = null;
 
         const transport = {
+            incomingEvents: null,
             send(message: TransportEvent<any>) {
                 try {
                     if (VerboseLogHttpServer)

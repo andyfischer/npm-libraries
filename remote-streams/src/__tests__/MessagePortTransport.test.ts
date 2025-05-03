@@ -5,7 +5,7 @@ import { Stream, c_fail } from '@andyfischer/streams'
 import { createLocalPortPair } from '../utils/Port'
 import { MessagePortClient } from '../clients/MessagePortClient'
 
-it("passes the local message port test", () => {
+it("passes the local message port test", async () => {
     const [ clientPort, serverPort ] = createLocalPortPair();
 
     const clientConnection = new Connection({
@@ -27,7 +27,7 @@ it("passes the local message port test", () => {
     const req1output = new Stream();
     clientConnection.sendRequest({ request: 1 }, req1output);
 
-    expect(req1output.takeItemsSync()).toEqual([
+    expect(await req1output.promiseItems()).toEqual([
         { responseTo: { request: 1 }}
     ]);
     expect(req1output.isClosed()).toEqual(true);
@@ -36,12 +36,12 @@ it("passes the local message port test", () => {
     const serverReqOutput = new Stream();
     serverConnection.sendRequest({}, serverReqOutput);
 
-    expect(serverReqOutput.takeEventsSync()).toEqual([
+    expect(await serverReqOutput.promiseEvents()).toEqual([
         { t: c_fail, error: { errorMessage: 'Connection is not set up to handle requests', errorType: 'no_handler' } },
     ]);
 });
 
-it("provides the sender information", () => {
+it("provides the sender information", async () => {
     const [ clientPort, serverPort ] = createLocalPortPair();
 
     const log = [];
@@ -79,7 +79,8 @@ it("provides the sender information", () => {
         }
     });
 
-    clientConnection.sendRequest({ req: 1 });
+    const response = clientConnection.sendRequest({ req: 1 });
+    await response.promiseEvents();
 
     expect(log).toEqual(['handle request (sender=sender_123): {"req":1}']);
 

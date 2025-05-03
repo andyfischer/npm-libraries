@@ -36,13 +36,21 @@ Each remote connection has two layers:
    - Lower level, handles the details of sending the message across some remote protocol.
    - Responsible for transporting messages to & from the Connection.
 
-# How to write a new Transport #
+# Examples #
 
-The transport interface looks like:
+## Creating a WebSocket client ##
 
-    interface ConnectionTransport<RequestType, ResponseType> {
-        send(message: TransportMessage<RequestType>): void
-        incomingEvents: Stream< TransportMessage<RequestType> >
-        close(): void
-    }
+```
+import { Connection, WebSocketClient } from "@andyfischer/remote-streams";
 
+...
+
+    const client = new Connection({
+        connect: () => {
+            return new WebSocketClient(
+                new WebSocket(url)
+            )
+        },
+        logs: createNestedLoggerStream('remote connection')
+    });
+```
