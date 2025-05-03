@@ -79,6 +79,13 @@ export class Query {
             throw new Error("no value for: " + attr);
         return tag.getStringValue();
     }
+
+    getString(attr: string) {
+        const tag = this.getAttr(attr);
+        if (!tag)
+            throw new Error("no value for: " + attr);
+        return tag.getStringValue();
+    }
     
     getNumberValue(attr: string) {
         const tag = this.getAttr(attr);
@@ -94,11 +101,18 @@ export class Query {
         return tag.getQuery();
     }
 
-    getOptionalNumberValue(attr: string, defaultValue: number) {
+    getNumberOptional(attr: string, defaultValue?: number) {
         const tag = this.getAttr(attr);
         if (!tag || !tag.hasValue())
             return defaultValue;
         return tag.getNumberValue();
+    }
+
+    getStringOptional(attr: string, defaultValue?: string) {
+        const tag = this.getAttr(attr);
+        if (!tag || !tag.hasValue())
+            return defaultValue;
+        return tag.getStringValue();
     }
 
     getNumber(attr: string): number {

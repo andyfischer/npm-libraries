@@ -145,7 +145,11 @@ export class HttpClient<RequestType, ResponseType> implements Transport<RequestT
                 verboseLog(`HttpClient (req #${httpRequestId})  got a fetch exception, closing with error`, { e });
 
                 try {
-                    this.incomingEvents.item({ t: TransportEventType.connection_lost, cause: error, shouldRetry: false });
+                    this.incomingEvents.item({
+                        t: TransportEventType.connection_lost,
+                        cause: error,
+                        shouldRetry: false
+                    });
                 } catch (e) { }
 
                 return;
@@ -160,6 +164,7 @@ export class HttpClient<RequestType, ResponseType> implements Transport<RequestT
                     details: {
                         httpStatus: fetchResponse.status,
                         httpStatusText: fetchResponse.statusText,
+                        httpUrl: fullUrl,
                     }
                 }
 
@@ -171,7 +176,11 @@ export class HttpClient<RequestType, ResponseType> implements Transport<RequestT
                 }
 
                 try {
-                    this.incomingEvents.item({ t: TransportEventType.connection_lost, cause: error, shouldRetry });
+                    this.incomingEvents.item({
+                        t: TransportEventType.connection_lost,
+                        cause: error,
+                        shouldRetry
+                    });
                 } catch (e) {
                     console.error('HttpClient: uncaught error while sending error message', { e });
                     if (exceptionIsBackpressureStop(e))

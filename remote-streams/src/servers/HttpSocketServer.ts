@@ -5,12 +5,12 @@ import { WebSocketServer, ServerOptions as WebSocketServerOptions } from "./WebS
 import { HttpRequestHandler } from "./HttpRequestHandler";
 
 interface ServerSettings {
+    port: number | string
+    requestPath: string
     handleRequest?: (req: any, connection: any, output: any) => void
-    requestPath?: string
     webServer?: { handle: (req, res) => void }
     enableWebSocket?: boolean
     webSocketSettings?: WebSocketServerOptions<any>
-    port: number | string
 }
 
 interface ActiveHttpServer {
@@ -24,7 +24,7 @@ export async function setupHttpServer(settings: ServerSettings): Promise<ActiveH
 
     const log = createNestedLoggerStream('HttpServer');
     let webSocketServer: WebSocketServer<any> | null = null;
-    const requestPath = settings.requestPath || '/api';
+    const requestPath = settings.requestPath;
 
     if (!requestPath.startsWith('/')) {
         throw new Error('requestPath must start with a /');

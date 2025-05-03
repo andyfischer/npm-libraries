@@ -1,17 +1,20 @@
 
-# Outline #
+# remote-streams #
+
+## Outline #
 
 Library for remote transmission of data on Stream objects. (using `@andyfischer/streams`).
 
 Each connection is multiplexed so it can support multiple streams at once.
-For example, the HTTP client can receive data for multiple Streams as part of a single HTTP request.
 
 Supports a few builtin transport types and supports custom transports.
 
-Provides a generic Connection interface, so that most of the code can be agnostic about
-what the connection's transport is.
+Provides a generic Connection interface, so that the code can be agnostic about
+what the connection's transport is. (whether it's HTTP or WebSocket or MessagePort or etc)
 
-# Builtin transports #
+Handles automatic reconnection retries for session based transports (like WebSockets)
+
+## Builtin transports #
 
  * HttpClient - Client using `fetch` to make HTTP requests.
  * MessagePort - Client using Javascript `MessagePort` objects (used in web workers)
@@ -19,7 +22,7 @@ what the connection's transport is.
  * HttpServer - Server that handles HTTP requests.
  * WebSocketServer - Server that handles WebSocket connections.
 
-# Overview #
+## Implementation overview
 
 Each remote connection has two layers:
 
@@ -36,12 +39,27 @@ Each remote connection has two layers:
    - Lower level, handles the details of sending the message across some remote protocol.
    - Responsible for transporting messages to & from the Connection.
 
-# Examples #
+## Examples #
 
-## Creating a WebSocket client ##
+### Creating an HTTP client ##
+
+import { Connection, HttpClient } from "@andyfischer/remote-streams";
+import { createNestedLoggerStream } from '@andyfischer/streams';
+
+...
+
+    const client = new Connection({
+        connect: () => new HttpClient({
+            url: 'http://localhost:8000',
+        }),
+        logs: createNestedLoggerStream('http client')
+    });
+
+### Creating a WebSocket client ##
 
 ```
 import { Connection, WebSocketClient } from "@andyfischer/remote-streams";
+import { createNestedLoggerStream } from '@andyfischer/streams';
 
 ...
 

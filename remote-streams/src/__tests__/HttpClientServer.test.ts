@@ -11,6 +11,7 @@ const port = 8099;
 beforeAll(async () => {
     server = await setupHttpServer({
         port,
+        requestPath: '/api',
         handleRequest: (req, connection, output) => {
             output.item({ responseTo: req });
             output.done();
